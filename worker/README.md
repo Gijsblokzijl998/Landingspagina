@@ -34,6 +34,10 @@ Kies één van de twee manieren.
    - Value: de sleutel uit stap 1
 
    Klik **Deploy**.
+
+   Zie je daarna de melding *"Update your Wrangler configuration with these changes"*, dan is het type **Text**
+   geworden in plaats van **Secret**. Verwijder die variabele en voeg hem opnieuw toe als **Secret**. Een secret
+   komt nooit in `wrangler.toml` en geeft deze melding niet.
 5. Noteer het adres van de Worker, bijvoorbeeld `https://landingspagina.<jouw-subdomein>.workers.dev`. Je ziet het
    op de overzichtspagina van de Worker.
 
