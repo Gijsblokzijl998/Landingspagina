@@ -11,14 +11,17 @@ Ontwerp, keuzes en fasering staan in [PROJECTPLAN.md](PROJECTPLAN.md).
 Alles stel je in via **⚙ Instellingen**. Wijzigingen worden pas bewaard als je op *Opslaan* klikt.
 
 - **Tegels.** Voeg ze toe, bewerk, orden en verwijder ze. Je kunt ze ook direct op het dashboard verslepen. Elke
-  tegel krijgt een grijs lijnicoon uit een set van 87, of een eigen teken. Er zijn vier soorten:
+  tegel krijgt een grijs lijnicoon uit een set van 87, een eigen teken of het favicon van de site. Elke tegel kan
+  ook een achtergrondafbeelding krijgen; die wordt gedimd zodat de inhoud leesbaar blijft. Er zijn vier soorten:
   - **Gewone tegel.** Opent een website, een lokaal bestand of map, of een bestand dat je per sessie kiest.
     Een lokaal pad plak je in, bijvoorbeeld via rechtsklik → *Als pad kopiëren* in Verkenner.
   - **Link-tegel.** Een lijstje links.
-  - **RSS-tegel (2 × 1).** De nieuwste berichten van een RSS- of Atom-feed, één regel per bericht, elke 15 minuten
-    ververst.
-  - **Agenda-tegel (3 × 2).** De afspraken uit je Google Agenda van vandaag en de komende dagen (standaard 30),
-    inclusief herhalende afspraken. Afgelopen afspraken worden grijs, de lopende is gemarkeerd.
+  - **RSS-tegel (2 × 1).** De nieuwste berichten van een RSS- of Atom-feed, met het favicon van de site als icoon.
+    Eén regel per bericht, met vooraan een korte datum in de accentkleur (tijd van vandaag, dag deze week, anders de
+    datum). Elke 15 minuten ververst.
+  - **Agenda-tegel (standaard 3 × 2, instelbaar van 2 × 2 tot 4 × 4).** De afspraken uit je Google Agenda van
+    vandaag en de komende dagen (standaard 30), inclusief herhalende afspraken. Tijden staan in de accentkleur.
+    Afgelopen afspraken worden grijs, de lopende is gemarkeerd.
 - **Snelle links** in een vaste balk onderaan, met het favicon van de site. Dat is grijs tot je de link aanwijst.
 - **Kopbalk** met logo, titel en welkomsttekst, het weer van je plaats (Open-Meteo) en de klok.
 - **Uiterlijk.** Licht, donker of systeemthema, accentkleur, achtergrond (kleur of foto), grootte van het grid

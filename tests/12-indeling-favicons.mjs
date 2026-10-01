@@ -117,7 +117,7 @@ await p.evaluate(() => { const d = structuredClone(config); d.tiles.find(t => t.
 await p.waitForTimeout(300);
 const fit = await p.evaluate(() => { const b = document.querySelector('.tile--rss .tile-body'); return { items: b.querySelectorAll('.feed-item').length, scroll: b.scrollHeight, client: b.clientHeight, size: Math.round(parseFloat(getComputedStyle(b.querySelector('.feed-title')).fontSize) * 10) / 10 }; });
 check('5 berichten passen zonder scrollen, kleinere tekst', fit.items === 5 && fit.scroll <= fit.client && fit.size < 12.5, JSON.stringify(fit));
-check('korte datum achter het bericht', await p.evaluate(() => /^(nu|\d+ (min|u|d)|\d+ \w{3})$/.test(document.querySelector('.feed-meta').textContent)), await p.evaluate(() => document.querySelector('.feed-meta').textContent));
+check('korte datum vóór het bericht', await p.evaluate(() => { const m = document.querySelector('.feed-item .feed-meta'); return /^(\d\d:\d\d|\w{2} \d+|\d+ \w{3})$/.test(m.textContent) && m.nextElementSibling?.classList.contains('feed-title'); }), await p.evaluate(() => document.querySelector('.feed-meta').textContent));
 await p.screenshot({ path: OUT + '/rss-5.png', clip: await p.evaluate(() => { const r = document.querySelector('.tile--rss').getBoundingClientRect(); return { x: r.x - 8, y: r.y - 8, width: r.width + 16, height: r.height + 16 }; }) });
 
 // Agenda 3 breed; bij 2 kolommen 2 breed

@@ -37,6 +37,8 @@ Eén suite apart draaien: `node tests/09-agenda.mjs`. Schermafbeeldingen komen i
 | `09-agenda` | ICS lezen, herhalingen, tijdzones, wintertijd, tegel per dag |
 | `10-toegankelijkheid` | axe-core op dashboard en alle instellingen (licht en donker), toetsenbordbediening |
 | `11-beveiliging` | geen CSP-overtredingen bij normaal gebruik; onbekende servers en ingevoegde scripts geblokkeerd |
+| `12-indeling-favicons` | brede RSS-tegel, compacte links en agenda, grid tot 8 × 8, favicons via de Worker |
+| `13-favicon-achtergrond` | favicon als tegelicoon, accentkleur voor datum en tijd, agendagrootte, tegelachtergrond |
 
 ## Na het wijzigen van een script in index.html
 

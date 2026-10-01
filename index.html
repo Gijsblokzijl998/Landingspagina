@@ -7,7 +7,7 @@
     Beveiligingsregel (CSP): alleen de twee ingebouwde scripts (vastgelegd met hun SHA-256), Open-Meteo, de Worker
     op workers.dev en afbeeldingen via https/data/blob/file. Na het wijzigen van een script: node tests/check-csp.mjs --fix
   -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-0rmtLU0ARXSsrvNsuB+4/Bmhz0qNOt8iOlmRWEBipkk=' 'sha256-k2w0rroNzrD9NVHs6LZxpeu8WoWQW16hC3f4yxyfov0='; style-src 'unsafe-inline'; img-src https: data: blob: file:; connect-src https://api.open-meteo.com https://geocoding-api.open-meteo.com https://*.workers.dev; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-0rmtLU0ARXSsrvNsuB+4/Bmhz0qNOt8iOlmRWEBipkk=' 'sha256-SiIMSijzvmY2InXIRhCRPzfBi/U/+0iwehFUecO/bRU='; style-src 'unsafe-inline'; img-src https: data: blob: file:; connect-src https://api.open-meteo.com https://geocoding-api.open-meteo.com https://*.workers.dev; base-uri 'none'; form-action 'none'; object-src 'none'">
   <title>Mijn Dashboard</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='2' width='12' height='12' rx='3' fill='%232563eb'/%3E%3Crect x='18' y='2' width='12' height='12' rx='3' fill='%2360a5fa'/%3E%3Crect x='2' y='18' width='12' height='12' rx='3' fill='%2360a5fa'/%3E%3Crect x='18' y='18' width='12' height='12' rx='3' fill='%232563eb'/%3E%3C/svg%3E">
   <script>
@@ -486,7 +486,11 @@
       opacity: .8;
       transition: filter .2s, opacity .2s;
     }
-    a:is(:hover, :focus-visible) > .favicon { filter: none; opacity: 1; }
+    a:is(:hover, :focus-visible) > .favicon,
+    .tile:hover :is(.tile-heading, .tile-icon) > .favicon,
+    .tile:hover .tile-heading > span > .favicon { filter: none; opacity: 1; }
+    .tile-icon > .favicon { width: 28px; height: 28px; border-radius: 6px; }
+    .tile-icon > .favicon--letter { font-size: 14px; }
     /* Laatste terugval als geen enkele bron een favicon levert: de eerste letter van het domein. */
     .favicon--letter {
       display: inline-grid;
@@ -517,9 +521,9 @@
     .feed-list { display: grid; margin: 0; padding: 0; list-style: none; }
     .feed-item {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-columns: 44px minmax(0, 1fr);
       align-items: baseline;
-      gap: 10px;
+      gap: 6px;
       padding: 1px 6px;
       border-radius: 5px;
       text-decoration: none;
@@ -534,11 +538,20 @@
       white-space: nowrap;
       text-overflow: ellipsis;
     }
-    .feed-meta { color: var(--text-muted); font-size: .66rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .feed-meta { color: var(--accent-text); font-size: .7rem; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
     .feed-stale { margin-top: 6px; color: var(--text-muted); font-size: .7rem; font-style: italic; }
 
-    .tile--calendar { grid-column: span 3; grid-row: span 2; }
-    .grid[data-cols="2"] .tile--calendar { grid-column: span 2; }
+    .tile--calendar { grid-column: span var(--span-cols, 3); grid-row: span var(--span-rows, 2); }
+
+    .tile.has-background {
+      background-image:
+        linear-gradient(color-mix(in srgb, var(--surface) var(--tile-dim), transparent), color-mix(in srgb, var(--surface) var(--tile-dim), transparent)),
+        var(--tile-background);
+      background-position: center;
+      background-size: cover;
+    }
+    .tile.has-background .tile-icon { background: color-mix(in srgb, var(--surface) 70%, transparent); }
+    .tile.has-background .agenda-date { background: none; }
 
     /* Agenda */
     .agenda { display: grid; gap: 6px; }
@@ -555,7 +568,7 @@
     .agenda-list { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
     .agenda-item {
       display: grid;
-      grid-template-columns: 78px minmax(0, 1fr);
+      grid-template-columns: 86px minmax(0, 1fr);
       gap: 8px;
       padding: 1px 6px;
       border-left: 2px solid transparent;
@@ -567,7 +580,8 @@
     .agenda-item.is-past .agenda-title { color: var(--text-muted); }
     .agenda-item.is-past .agenda-time { text-decoration: line-through; }
     .agenda-item.is-now { border-left-color: var(--text-muted); background: var(--surface-hover); }
-    .agenda-time { padding-top: 1px; color: var(--text-muted); font-size: .72rem; font-variant-numeric: tabular-nums; }
+    .agenda-time { padding-top: 1px; color: var(--accent-text); font-size: .72rem; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .agenda-item.is-past .agenda-time { color: var(--text-muted); font-weight: 400; }
     .agenda-text { display: grid; min-width: 0; }
     .agenda-title, .agenda-location { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
     .agenda-location { color: var(--text-muted); font-size: .7rem; }
@@ -699,6 +713,7 @@
     .settings-panel input.input-short { width: 120px; }
     .settings-panel :is(input, select):focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
     .settings-panel input:user-invalid { border-color: var(--danger); }
+    .settings-panel input[type="range"] { width: 220px; accent-color: var(--accent); }
     .settings-panel input[type="color"] {
       width: 44px;
       height: 34px;
@@ -760,6 +775,7 @@
     .icon-choice:hover { color: var(--text); border-color: var(--border); }
     .icon-choice[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-text); }
     .icon-choice--none { font-size: .7rem; }
+    .icon-choice--wide { grid-column: span 2; }
     .item-icon .icon { width: 18px; height: 18px; vertical-align: middle; }
 
     .status { font-size: .78rem; color: var(--text-muted); }
@@ -968,7 +984,7 @@
     const DB_VERSION = 1;
     const DB_STORES = ['kv', 'assets', 'cache'];   // kv: config-back-up, assets: afbeeldingen, cache: externe data
 
-    const CONFIG_VERSION = 2;
+    const CONFIG_VERSION = 3;
     const EXPORT_APP_ID = 'landingspagina';
 
     const WEATHER_API = 'https://api.open-meteo.com/v1/forecast';
@@ -1083,7 +1099,7 @@
           { label: 'OneDrive', url: 'https://onedrive.live.com/' },
           { label: 'Office', url: 'https://www.office.com/' }
         ] },
-        { id: 't5', type: 'rss', title: 'Nieuws', icon: 'rss', feedUrl: 'https://feeds.nos.nl/nosnieuwsalgemeen', maxItems: 8 }
+        { id: 't5', type: 'rss', title: 'Nieuws', icon: 'favicon', feedUrl: 'https://feeds.nos.nl/nosnieuwsalgemeen', maxItems: 8 }
       ],
       quickLinks: {
         enabled: true,
@@ -1097,19 +1113,21 @@
     };
 
     // Standaardvelden per tegeltype; ontbrekende velden in opgeslagen of geïmporteerde tegels worden hiermee aangevuld.
+    // background: verkleinde afbeelding (data-URL) achter de tegel, gedimd met backgroundDim procent overlay.
+    const TILE_BACKGROUND = { background: '', backgroundDim: 80 };
     const TILE_DEFAULTS = {
-      link: { title: '', icon: '', color: '', openInApp: true, target: { kind: 'url', value: '' } },
-      links: { title: '', icon: '', links: [] },
-      rss: { title: '', icon: '', feedUrl: '', maxItems: 8 },
-      calendar: { title: '', icon: '', icsUrl: '', daysAhead: 30 }
+      link: { title: '', icon: '', color: '', openInApp: true, target: { kind: 'url', value: '' }, ...TILE_BACKGROUND },
+      links: { title: '', icon: '', links: [], ...TILE_BACKGROUND },
+      rss: { title: '', icon: 'favicon', feedUrl: '', maxItems: 8, ...TILE_BACKGROUND },
+      calendar: { title: '', icon: '', icsUrl: '', daysAhead: 30, width: 3, height: 2, ...TILE_BACKGROUND }
     };
     const LINK_DEFAULTS = { label: '', url: '' };
 
     const TILE_TYPES = {
       link: { label: 'Gewone tegel', width: 1, height: 1, defaultTitle: 'Nieuwe tegel', icon: 'link' },
       links: { label: 'Link-tegel (lijst)', width: 1, height: 1, defaultTitle: 'Links', icon: 'bookmark' },
-      rss: { label: 'RSS-feed (2 × 1)', width: 2, height: 1, defaultTitle: 'Nieuws', icon: 'rss' },
-      calendar: { label: 'Agenda (3 × 2)', width: 3, height: 2, defaultTitle: 'Agenda', icon: 'calendar' }
+      rss: { label: 'RSS-feed (2 × 1)', width: 2, height: 1, defaultTitle: 'Nieuws', icon: 'favicon' },
+      calendar: { label: 'Agenda', width: 3, height: 2, defaultTitle: 'Agenda', icon: 'calendar' }
     };
 
     const TARGET_KINDS = {
@@ -1258,6 +1276,13 @@
           if (isPlainObject(tile) && emojiToIcon[tile.icon]) tile.icon = emojiToIcon[tile.icon];
         }
         return data;
+      },
+      // v3: RSS-tegels tonen standaard het favicon van de site als icoon.
+      2: data => {
+        for (const tile of Array.isArray(data.tiles) ? data.tiles : []) {
+          if (isPlainObject(tile) && tile.type === 'rss' && ['rss', ''].includes(tile.icon ?? '')) tile.icon = 'favicon';
+        }
+        return data;
       }
     };
 
@@ -1275,6 +1300,7 @@
     const TIME_FORMAT_SECONDS = new Intl.DateTimeFormat('nl-NL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const DATE_FORMAT = new Intl.DateTimeFormat('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
     const SHORT_DATE_FORMAT = new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'short' });
+    const WEEKDAY_DATE_FORMAT = new Intl.DateTimeFormat('nl-NL', { weekday: 'short', day: 'numeric' });
     const FULL_DATE_TIME_FORMAT = new Intl.DateTimeFormat('nl-NL', { dateStyle: 'full', timeStyle: 'short' });
     const AGENDA_DAY_FORMAT = new Intl.DateTimeFormat('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' });
     const AGENDA_FULL_DAY_FORMAT = new Intl.DateTimeFormat('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -1457,7 +1483,13 @@
       }
       if (normalized.type === 'link' && !isHexColor(normalized.color)) normalized.color = '';
       if (normalized.type === 'rss') normalized.maxItems = clamp(Math.round(normalized.maxItems) || 8, 1, 30);
-      if (normalized.type === 'calendar') normalized.daysAhead = clamp(Math.round(normalized.daysAhead) || 30, 1, 90);
+      if (normalized.type === 'calendar') {
+        normalized.daysAhead = clamp(Math.round(normalized.daysAhead) || 30, 1, 90);
+        normalized.width = clamp(Math.round(normalized.width) || 3, 2, 4);
+        normalized.height = clamp(Math.round(normalized.height) || 2, 2, 4);
+      }
+      if (!isImageDataUrl(normalized.background)) normalized.background = '';
+      normalized.backgroundDim = clamp(Math.round(normalized.backgroundDim) || 80, 40, 95);
       return normalized;
     }
 
@@ -1617,14 +1649,21 @@
       grid.replaceChildren(...tiles);
     }
 
-    // Aantal cellen dat een tegel inneemt; nooit breder dan het grid (de agenda is bij 2 kolommen 2 breed).
-    function tileCells(type, columns) {
-      const meta = TILE_TYPES[type] ?? { width: 1, height: 1 };
-      return Math.min(meta.width, columns) * meta.height;
+    // Breedte en hoogte van een tegel in cellen; nooit breder dan het grid. De agenda heeft een eigen, instelbare maat.
+    function tileSize(tile, columns) {
+      const meta = TILE_TYPES[tile.type] ?? { width: 1, height: 1 };
+      const width = tile.type === 'calendar' ? tile.width ?? meta.width : meta.width;
+      const height = tile.type === 'calendar' ? tile.height ?? meta.height : meta.height;
+      return { width: Math.min(width, columns), height };
+    }
+
+    function tileCells(tile, columns) {
+      const { width, height } = tileSize(tile, columns);
+      return width * height;
     }
 
     function countCells(tiles, columns) {
-      return tiles.reduce((sum, tile) => sum + tileCells(tile.type, columns), 0);
+      return tiles.reduce((sum, tile) => sum + tileCells(tile, columns), 0);
     }
 
     function buildTile(tile) {
@@ -1633,6 +1672,15 @@
       const node = builder(tile);
       node.dataset.tileId = tile.id;
       node.draggable = true;
+      const { width, height } = tileSize(tile, config.appearance.gridColumns);
+      node.style.setProperty('--span-cols', width);
+      node.style.setProperty('--span-rows', height);
+      // Achtergrondafbeelding, gedimd met een overlay in de kleur van de tegel.
+      if (isImageDataUrl(tile.background)) {
+        node.classList.add('has-background');
+        node.style.setProperty('--tile-background', `url("${tile.background}")`);
+        node.style.setProperty('--tile-dim', `${tile.backgroundDim}%`);
+      }
       preventInnerDrag(node);
       return node;
     }
@@ -1740,8 +1788,10 @@
           const href = safeUrl(item.link, ['http:', 'https:']);
           const date = item.date ? new Date(item.date) : null;
           const content = [
-            el('span', { class: 'feed-title' }, item.title || item.link),
-            date ? el('time', { class: 'feed-meta', datetime: date.toISOString(), title: FULL_DATE_TIME_FORMAT.format(date) }, shortAge(date)) : null
+            date
+              ? el('time', { class: 'feed-meta', datetime: date.toISOString(), title: FULL_DATE_TIME_FORMAT.format(date) }, feedDate(date))
+              : el('span', { class: 'feed-meta' }),
+            el('span', { class: 'feed-title' }, item.title || item.link)
           ];
           return el('li', {}, href
             ? el('a', { class: 'feed-item', ...linkAttributes(href) }, content)
@@ -1758,8 +1808,11 @@
       for (const tile of config.tiles) {
         if (tile.type !== 'rss' || tile.feedUrl !== feedUrl) continue;
         const body = $(`[data-tile-id="${CSS.escape(tile.id)}"] .tile-body`);
-        body?.replaceChildren(...[buildFeedContent(tile)].flat());
+        body?.replaceChildren(...[buildFeedContent(tile)].flat().filter(Boolean));
         if (body) preventInnerDrag(body);
+        // Het favicon van de site is pas bekend als de feed geladen is.
+        const heading = body?.parentElement.querySelector('.tile-heading');
+        if (heading && heading.dataset.site !== feedSiteUrl(tile)) heading.replaceWith(buildTileHeading(tile));
       }
     }
 
@@ -1867,15 +1920,30 @@
       }
     }
 
+    // De site achter een tegel: bij RSS de website van de feed, bij een gewone tegel het webadres.
+    function tileSiteUrl(tile) {
+      if (tile.type === 'rss') return feedSiteUrl(tile);
+      if (tile.type === 'link' && tile.target.kind === 'url') return safeUrl(tile.target.value, ['http:', 'https:']);
+      return null;
+    }
+
+    function feedSiteUrl(tile) {
+      return safeUrl(feedState.get(tile.feedUrl)?.feed?.link, ['http:', 'https:']) ?? safeUrl(tile.feedUrl, ['http:', 'https:']);
+    }
+
     function buildTileHeading(tile) {
       const glyph = buildTileGlyph(tile);
-      return el('h2', { class: 'tile-heading' },
+      return el('h2', { class: 'tile-heading', 'data-site': tile.icon === 'favicon' ? tileSiteUrl(tile) : null },
         glyph ? el('span', { 'aria-hidden': 'true' }, glyph) : null,
         el('span', {}, tile.title));
     }
 
-    // Een lijnicoon uit TILE_ICONS, of een eigen teken/emoji (in grijstinten), of niets.
+    // Een lijnicoon uit TILE_ICONS, het favicon van de site, een eigen teken/emoji (in grijstinten), of niets.
     function buildTileGlyph(tile) {
+      if (tile.icon === 'favicon') {
+        const site = tileSiteUrl(tile);
+        return (site && buildFavicon(site)) ?? icon(tile.type === 'rss' ? 'rss' : 'globe');
+      }
       if (TILE_ICONS[tile.icon]) return icon(tile.icon);
       if (tile.icon) return el('span', { class: 'emoji-icon' }, tile.icon);
       return null;
@@ -2333,6 +2401,9 @@
 
       return {
         title: htmlToText(text(channel, 'title')),
+        link: resolveUrl(isAtom
+          ? ([...root.children].find(element => element.localName === 'link' && (element.getAttribute('rel') ?? 'alternate') === 'alternate')?.getAttribute('href') ?? '')
+          : text(channel, 'link'), baseUrl),
         items: entries.map(entry => {
           let link = '';
           if (isAtom) {
@@ -2875,7 +2946,8 @@
 
     const IMAGE_SETTINGS = {
       logo: { path: 'general.logo.dataUrl', maxSize: 320, type: 'image/png' },
-      background: { path: 'appearance.background.image', maxSize: 1920, type: 'image/jpeg', quality: 0.82 }
+      background: { path: 'appearance.background.image', maxSize: 1920, type: 'image/jpeg', quality: 0.82 },
+      tile: { maxSize: 800, type: 'image/jpeg', quality: 0.8 } // pad per tegel, via data-image-path
     };
 
     function openSettings(sectionId = activeSettingsSection) {
@@ -3025,7 +3097,7 @@
       const setting = IMAGE_SETTINGS[control.dataset.image];
       if (!file || !setting) return;
       try {
-        setPath(draft, setting.path, await readImage(file, setting));
+        setPath(draft, control.dataset.imagePath ?? setting.path, await readImage(file, setting));
         applyAppearance(draft.appearance);
       } catch {
         toast(`"${file.name}" kon niet als afbeelding worden gelezen.`);
@@ -3036,7 +3108,7 @@
       const type = $('#newTileType').value;
       const meta = TILE_TYPES[type];
       const { gridColumns, gridRows } = draft.appearance;
-      if (countCells(draft.tiles, gridColumns) + tileCells(type, gridColumns) > gridColumns * gridRows) {
+      if (countCells(draft.tiles, gridColumns) + tileCells({ type, ...TILE_DEFAULTS[type] }, gridColumns) > gridColumns * gridRows) {
         toast(`Er is geen ruimte meer voor een ${meta.label.toLowerCase()}. ` +
           'Maak het grid groter via Uiterlijk, of verwijder een tegel.');
         return;
@@ -3130,7 +3202,7 @@
       return field('Afbeelding',
         el('div', { class: 'inline' },
           hasImage ? el('img', { class: 'image-preview', src: current, alt: '' }) : null,
-          el('input', { type: 'file', accept: 'image/*', 'data-image': kind, 'aria-label': 'Afbeelding kiezen' }),
+          el('input', { type: 'file', accept: 'image/*', 'data-image': kind, 'data-image-path': path, 'aria-label': 'Afbeelding kiezen' }),
           hasImage ? el('button', { class: 'btn', type: 'button', 'data-action': 'clear-image', 'data-path': path }, 'Verwijderen') : null),
         `Wordt verkleind tot maximaal ${IMAGE_SETTINGS[kind].maxSize} pixels en in je instellingen bewaard.`);
     }
@@ -3191,7 +3263,7 @@
             ? imageField('background', appearance.background.image, 'appearance.background.image')
             : null),
         buildSettingsGroup('Grid en tegels',
-          `Ruimte voor ${appearance.gridColumns * appearance.gridRows} cellen; de agenda gebruikt er 6, een RSS-tegel 2.`,
+          `Ruimte voor ${appearance.gridColumns * appearance.gridRows} cellen; een RSS-tegel gebruikt er 2, de agenda zoveel als je bij die tegel instelt (standaard 3 × 2).`,
           el('div', { class: 'inline' },
             field('Kolommen', selectFor('appearance.gridColumns', gridOptions, { 'data-type': 'number', 'data-rerender': true })),
             field('Rijen', selectFor('appearance.gridRows', gridOptions, { 'data-type': 'number', 'data-rerender': true }))),
@@ -3288,7 +3360,10 @@
           autocomplete: 'off'
         }), 'Google Agenda → Instellingen → jouw agenda → Agenda integreren → "Geheim adres in iCal-indeling". ' +
           'Behandel dit adres als een wachtwoord.'),
-        field('Dagen vooruit', inputFor(`${base}.daysAhead`, { type: 'number', min: 1, max: 90, class: 'input-short' }))
+        field('Dagen vooruit', inputFor(`${base}.daysAhead`, { type: 'number', min: 1, max: 90, class: 'input-short' })),
+        el('div', { class: 'inline' },
+          field('Breedte', selectFor(`${base}.width`, [[2, '2 tegels'], [3, '3 tegels'], [4, '4 tegels']], { 'data-type': 'number' })),
+          field('Hoogte', selectFor(`${base}.height`, [[2, '2 tegels'], [3, '3 tegels'], [4, '4 tegels']], { 'data-type': 'number' })))
       ]
     };
 
@@ -3303,12 +3378,19 @@
           field('Of een eigen teken', el('input', {
             type: 'text',
             class: 'input-short',
-            value: TILE_ICONS[tile.icon] ? '' : tile.icon,
+            value: TILE_ICONS[tile.icon] || tile.icon === 'favicon' ? '' : tile.icon,
             'data-path': `${base}.icon`,
             maxlength: 8,
             placeholder: 'bijv. ★'
           }), 'Een emoji of teken, in grijstinten getoond. Windows-toets + punt opent de emoji-kiezer.'),
           TILE_EDITORS[tile.type](tile, base)),
+        buildSettingsGroup('Achtergrond', 'Een afbeelding achter de tegel, gedimd zodat de inhoud leesbaar blijft.',
+          imageField('tile', tile.background, `${base}.background`),
+          isImageDataUrl(tile.background)
+            ? field(`Dimmen (${tile.backgroundDim}%)`, inputFor(`${base}.backgroundDim`, {
+                type: 'range', min: 40, max: 95, step: 5, 'data-type': 'number', 'data-rerender': true, 'aria-label': 'Sterkte van de overlay'
+              }), 'Hoe hoger, hoe rustiger de afbeelding.')
+            : null),
         el('div', { class: 'inline editor-footer' },
           el('button', { class: 'btn btn--primary', type: 'button', 'data-action': 'close-tile-editor' }, 'Klaar'),
           el('button', {
@@ -3336,6 +3418,9 @@
       return field('Icoon',
         el('div', { class: 'icon-picker', role: 'group', 'aria-label': 'Icoon kiezen' },
           choice('', 'Geen icoon: de eerste letter van de titel', 'Abc', ' icon-choice--none'),
+          tile.type === 'rss' || (tile.type === 'link' && tile.target.kind === 'url')
+            ? choice('favicon', 'Favicon van de site', 'Favicon', ' icon-choice--none icon-choice--wide')
+            : null,
           Object.entries(TILE_ICONS).map(([name, [label]]) => choice(name, label, icon(name)))));
     }
 
@@ -3568,15 +3653,11 @@
       return /^#[0-9a-f]{6}$/i.test(value);
     }
 
-    // Korte leeftijd van een bericht: "nu", "35 min", "2 u", "3 d", daarna een datum ("12 sep").
-    function shortAge(date, now = new Date()) {
-      const minutes = Math.round((now - date) / 60_000);
-      if (minutes < 1) return 'nu';
-      if (minutes < 60) return `${minutes} min`;
-      const hours = Math.round(minutes / 60);
-      if (hours < 24) return `${hours} u`;
-      const days = Math.round(hours / 24);
-      if (days < 7) return `${days} d`;
+    // Datum vóór een bericht: vandaag de tijd ("12:00"), deze week dag en datum ("di 29"), daarna "12 sep".
+    function feedDate(date, now = new Date()) {
+      const days = localDayNumber(now) - localDayNumber(date);
+      if (days <= 0) return TIME_FORMAT.format(date);
+      if (days < 7) return WEEKDAY_DATE_FORMAT.format(date).replace('.', '');
       return SHORT_DATE_FORMAT.format(date).replace('.', '');
     }
 

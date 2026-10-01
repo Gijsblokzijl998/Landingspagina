@@ -71,7 +71,8 @@ check('voetbalk ook onderaan na scrollen', await p.evaluate(() => Math.abs(docum
 await p.setViewportSize({ width: 1280, height: 860 });
 
 // --- Tegeliconen ---
-check('standaardtegels gebruiken lijniconen', await p.locator('#tileGrid .tile-icon svg').count() === 2 && await p.locator('#tileGrid .tile-heading svg').count() === 3);
+check('standaardtegels gebruiken lijniconen', await p.locator('#tileGrid .tile-icon svg').count() === 2 && await p.locator('#tileGrid .tile-heading svg').count() === 2);
+check('RSS-tegel toont het favicon van de site als icoon', await p.locator('#tileGrid .tile--rss .tile-heading .favicon').count() === 1);
 await p.click('#settingsBtn'); await p.click('[data-section="tiles"]');
 await p.click('[data-action="edit-tile"][data-id="t2"] >> nth=0');
 check('iconenkiezer met ' + await p.locator('.icon-choice').count() + ' keuzes', await p.locator('.icon-choice').count() > 30);
@@ -91,9 +92,11 @@ check('eigen teken in grijstinten', await p.evaluate(() => { const e = document.
 const migrated = await p.evaluate(() => normalizeConfig({ version: 1, tiles: [
   { id: 'a', type: 'link', title: 'Mail', icon: '✉️', target: { kind: 'url', value: 'https://x.nl' } },
   { id: 'b', type: 'rss', title: 'N', icon: '📰' },
-  { id: 'c', type: 'link', title: 'Eigen', icon: '🚀', target: { kind: 'url', value: 'https://x.nl' } }
+  { id: 'c', type: 'link', title: 'Eigen', icon: '🚀', target: { kind: 'url', value: 'https://x.nl' } },
+  { id: 'd', type: 'rss', title: 'M', icon: 'globe' }
 ] }));
-check('migratie v1 → v2 zet standaard-emoji\'s om, eigen emoji blijft', migrated.version === 2 && migrated.tiles[0].icon === 'mail' && migrated.tiles[1].icon === 'rss' && migrated.tiles[2].icon === '🚀');
+check('migratie v1 → v3 zet standaard-emoji\'s om, eigen emoji blijft', migrated.version === 3 && migrated.tiles[0].icon === 'mail' && migrated.tiles[2].icon === '🚀');
+check('migratie v3: RSS-tegel met standaardicoon krijgt het favicon, eigen keuze blijft', migrated.tiles[1].icon === 'favicon' && migrated.tiles[3].icon === 'globe');
 
 for (const scheme of ['light', 'dark']) {
   await p.emulateMedia({ colorScheme: scheme });

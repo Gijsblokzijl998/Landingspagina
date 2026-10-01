@@ -88,18 +88,20 @@ Landingspagina/
   - instellingenknop (⚙), die de modal opent.
 
 ### 3.2 Hoofdcontainer (`#mainContainer`) met het tegelgrid (`.grid`)
-- Een CSS-grid met **2–4 kolommen × 2–4 rijen**. De agenda is 2 breed, dus minimaal 2 kolommen. De cellen zijn
-  vierkant en schalen mee met het venster.
-- Tegels staan in de volgorde van de configuratie. `grid-auto-flow: dense` vult gaten op die door de 2x2-agenda ontstaan.
-- De instellingen bewaken de capaciteit: kolommen × rijen cellen, waarbij de agenda 4 cellen telt.
+- Een CSS-grid met **2–8 kolommen × 2–8 rijen**. De agenda is minstens 2 breed, dus minimaal 2 kolommen. De cellen
+  zijn vierkant en schalen mee met het venster.
+- Tegels staan in de volgorde van de configuratie. `grid-auto-flow: dense` vult gaten op die door brede tegels ontstaan.
+- De instellingen bewaken de capaciteit: kolommen × rijen cellen, waarbij elke tegel breedte × hoogte cellen telt.
+- Elke tegel kan een eigen achtergrondafbeelding krijgen. Een overlay in de kleur van de tegel dimt die (40–95 %),
+  zodat de inhoud leesbaar blijft.
 - Op smalle schermen worden het 2 kolommen en scrollt de pagina.
 
 | Tegeltype | Grootte | Inhoud | Klikgedrag |
 |-----------|---------|--------|------------|
-| `link`, de gewone tegel | 1x1 | icoon (emoji of afbeelding), titel en optionele kleur | opent het doel: URL, onthouden pad of sessiebestand (zie §6) |
-| `links`, de link-tegel | 1x1 | titel met een lijst van ±3–6 links | elke link opent afzonderlijk |
-| `rss` | 1x1 | feednaam met de laatste N items, scrollbaar | een item opent het artikel in een nieuw tabblad |
-| `calendar` | 2x2 | afspraken van de **komende 30 dagen**, gegroepeerd per dag, scrollbaar | een afspraak toont details (tijd, locatie) |
+| `link`, de gewone tegel | 1x1 | lijnicoon, eigen teken of favicon, titel en optionele kleur | opent het doel: URL, onthouden pad of sessiebestand (zie §6) |
+| `links`, de link-tegel | 1x1 | titel met een compacte lijst links met favicon | elke link opent afzonderlijk |
+| `rss` | 2x1 | favicon van de site, dan per bericht één regel: korte datum (accentkleur) en titel | een item opent het artikel in een nieuw tabblad |
+| `calendar` | 3x2, instelbaar 2–4 × 2–4 | afspraken van de **komende 30 dagen**, gegroepeerd per dag, tijden in de accentkleur, scrollbaar | een afspraak toont details (tijd, locatie) |
 
 ### 3.3 Snelle links (`#quickLinksBar`)
 Een optionele horizontale balk onder het grid, aan of uit te zetten. Bij te veel links scrollt hij horizontaal.
@@ -491,5 +493,11 @@ Worker en kan eventueel naar voren.
    - toegankelijkheid: axe-core zonder bevindingen in licht en donker; agenda-contrast en toetsenbordtoegang verbeterd;
    - beveiliging: CSP met SHA-256 van de twee scripts, `connect-src` alleen Open-Meteo en `*.workers.dev`;
      Worker-adressen buiten workers.dev worden met uitleg geweigerd;
-   - tests in de repo (`npm test`, 13 suites, 251 controles) en README afgerond.
-10. Wensen of problemen na gebruik op Windows/Edge: per onderwerp bijstellen. samen kijken en waar nodig het plan bijstellen. Dit document wordt bijgewerkt als keuzes veranderen.
+   - tests in de repo (`npm test`, nu 15 suites en ruim 300 controles) en README afgerond.
+10. Wensen na gebruik op Windows/Edge, per ronde verwerkt:
+    - brede RSS-tegel (2 × 1) met één regel per bericht, compacte links en agenda, snelle links zonder pil,
+      favicons via de Worker (`/favicon`, versie 1.1.0), ook voor Dynamics 365;
+    - grid tot 8 × 8, agenda 3 breed, korte datum bij berichten;
+    - favicon van de site als icoon van de RSS-tegel (configversie 3), datum vóór elk bericht en agendatijden in de
+      accentkleur, breedte en hoogte van de agenda instelbaar, gedimde achtergrondafbeelding per tegel.
+11. Verdere wensen of problemen: per onderwerp bijstellen. samen kijken en waar nodig het plan bijstellen. Dit document wordt bijgewerkt als keuzes veranderen.

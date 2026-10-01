@@ -84,7 +84,7 @@ let t = await nosTile();
 console.log('     NOS-tegel:', t.items.slice(0, 2));
 check('NOS-tegel toont 8 berichten (maxItems)', t.items.length === 8 && t.items[0].title === parsed.nos.items[0].title);
 check('berichten openen in nieuw tabblad', t.items.every(i => i.target === '_blank' && i.href.startsWith('https://nos.nl/')));
-check('korte leeftijd getoond', t.items.every(i => i.time && /^(nu|\d+ (min|u|d)|\d+ \w{3})$/.test(i.time)), t.items[0].time);
+check('korte datum getoond', t.items.every(i => i.time && /^(\d\d:\d\d|\w{2} \d+|\d+ \w{3})$/.test(i.time)), t.items[0].time);
 check('Verge-tegel toont 5 berichten', await p.locator('[data-tile-id="verge"] .feed-item').count() === 5);
 const unsafe = await p.evaluate(evil => {
   feedState.set('https://evil.example/', { fetchedAt: Date.now(), feed: parseFeed(evil, 'https://evil.example/'), error: null });
@@ -143,9 +143,9 @@ await p.evaluate(() => Promise.all([updateFeeds({ force: true }), updateFeeds({ 
 check('gelijktijdige updates halen een feed maar één keer op', upstream.calls.filter(u => u.includes('rdf.example')).length - before === 1);
 
 // relativeTime
-const rel = await p.evaluate(() => { const now = new Date('2026-10-01T12:00:00'); return [0.2, 12, 180, 26 * 60, 3 * 1440, 20 * 1440].map(m => shortAge(new Date(now - m * 60_000), now)); });
-console.log('     korte leeftijden:', rel);
-check('korte leeftijden', rel.join(' | ') === 'nu | 12 min | 3 u | 1 d | 3 d | 11 sep', rel.join(' | '));
+const rel = await p.evaluate(() => { const now = new Date('2026-10-01T12:00:00'); return [0.2, 12, 180, 26 * 60, 3 * 1440, 20 * 1440].map(m => feedDate(new Date(now - m * 60_000), now)); });
+console.log('     korte datums:', rel);
+check('korte datums (tijd vandaag, dag deze week, anders datum)', rel.join(' | ') === '11:59 | 11:48 | 09:00 | wo 30 | ma 28 | 11 sep', rel.join(' | '));
 
 console.log('paginafouten:', errors.length ? errors : 'geen');
 console.log(fails ? fails + ' FOUT(EN)' : 'ALLES OK');
