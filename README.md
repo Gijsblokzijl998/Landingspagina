@@ -15,13 +15,14 @@ Alles stel je in via **⚙ Instellingen**. Wijzigingen worden pas bewaard als je
   - **Gewone tegel.** Opent een website, een lokaal bestand of map, of een bestand dat je per sessie kiest.
     Een lokaal pad plak je in, bijvoorbeeld via rechtsklik → *Als pad kopiëren* in Verkenner.
   - **Link-tegel.** Een lijstje links.
-  - **RSS-tegel.** De nieuwste berichten van een RSS- of Atom-feed, elke 15 minuten ververst.
-  - **Agenda-tegel (2 × 2).** De afspraken uit je Google Agenda van vandaag en de komende dagen (standaard 30),
+  - **RSS-tegel (2 × 1).** De nieuwste berichten van een RSS- of Atom-feed, één regel per bericht, elke 15 minuten
+    ververst.
+  - **Agenda-tegel (3 × 2).** De afspraken uit je Google Agenda van vandaag en de komende dagen (standaard 30),
     inclusief herhalende afspraken. Afgelopen afspraken worden grijs, de lopende is gemarkeerd.
 - **Snelle links** in een vaste balk onderaan, met het favicon van de site. Dat is grijs tot je de link aanwijst.
 - **Kopbalk** met logo, titel en welkomsttekst, het weer van je plaats (Open-Meteo) en de klok.
 - **Uiterlijk.** Licht, donker of systeemthema, accentkleur, achtergrond (kleur of foto), grootte van het grid
-  (tot 4 × 4) en tegelstijl. Je ziet direct een voorbeeld.
+  (tot 8 × 8) en tegelstijl. Je ziet direct een voorbeeld.
 - **Gegevens.** Exporteren, importeren en terugzetten. Er is altijd een automatische back-up in de browser.
 
 Alle links openen in een nieuw tabblad.

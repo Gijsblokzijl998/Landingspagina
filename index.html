@@ -7,7 +7,7 @@
     Beveiligingsregel (CSP): alleen de twee ingebouwde scripts (vastgelegd met hun SHA-256), Open-Meteo, de Worker
     op workers.dev en afbeeldingen via https/data/blob/file. Na het wijzigen van een script: node tests/check-csp.mjs --fix
   -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-0rmtLU0ARXSsrvNsuB+4/Bmhz0qNOt8iOlmRWEBipkk=' 'sha256-xS3cGvUX71wA826Y89y29iumwRup83b4T8uMMvZF6fE='; style-src 'unsafe-inline'; img-src https: data: blob: file:; connect-src https://api.open-meteo.com https://geocoding-api.open-meteo.com https://*.workers.dev; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-0rmtLU0ARXSsrvNsuB+4/Bmhz0qNOt8iOlmRWEBipkk=' 'sha256-k2w0rroNzrD9NVHs6LZxpeu8WoWQW16hC3f4yxyfov0='; style-src 'unsafe-inline'; img-src https: data: blob: file:; connect-src https://api.open-meteo.com https://geocoding-api.open-meteo.com https://*.workers.dev; base-uri 'none'; form-action 'none'; object-src 'none'">
   <title>Mijn Dashboard</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='2' width='12' height='12' rx='3' fill='%232563eb'/%3E%3Crect x='18' y='2' width='12' height='12' rx='3' fill='%2360a5fa'/%3E%3Crect x='2' y='18' width='12' height='12' rx='3' fill='%2360a5fa'/%3E%3Crect x='18' y='18' width='12' height='12' rx='3' fill='%232563eb'/%3E%3C/svg%3E">
   <script>
@@ -296,7 +296,7 @@
       --cols: var(--cfg-cols, 4);
       --rows: var(--fit-rows, 4);
       /* Vierkante cellen: zo groot als de breedte en de vensterhoogte (voor de gebruikte rijen) toelaten. */
-      --tile: clamp(120px, min(
+      --tile: clamp(80px, min(
         (100cqi - (var(--cols) - 1) * var(--gap)) / var(--cols),
         (100dvh - var(--chrome-h) - (var(--rows) - 1) * var(--gap)) / var(--rows)
       ), 210px);
@@ -315,6 +315,7 @@
         --gap: 12px;
         --tile: calc((100cqi - var(--gap)) / 2);
       }
+      .grid .tile--calendar { grid-column: span 2; }
     }
 
     .grid-empty {
@@ -511,15 +512,16 @@
 
     .tile-state.is-error { color: var(--danger); }
 
-    .tile--rss { grid-column: span 2; }
+    .tile--rss { grid-column: span 2; padding-top: 11px; padding-bottom: 9px; }
+    .tile--rss .tile-heading { margin-bottom: 4px; }
     .feed-list { display: grid; margin: 0; padding: 0; list-style: none; }
     .feed-item {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
       align-items: baseline;
       gap: 10px;
-      padding: 3px 6px;
-      border-radius: 6px;
+      padding: 1px 6px;
+      border-radius: 5px;
       text-decoration: none;
     }
     a.feed-item:hover { background: var(--surface-hover); }
@@ -527,15 +529,16 @@
     .feed-title {
       overflow: hidden;
       color: color-mix(in srgb, var(--text) 85%, var(--text-muted));
-      font-size: .8rem;
-      line-height: 1.35;
+      font-size: .74rem;
+      line-height: 1.28;
       white-space: nowrap;
       text-overflow: ellipsis;
     }
-    .feed-meta { color: var(--text-muted); font-size: .7rem; white-space: nowrap; }
+    .feed-meta { color: var(--text-muted); font-size: .66rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
     .feed-stale { margin-top: 6px; color: var(--text-muted); font-size: .7rem; font-style: italic; }
 
-    .tile--calendar { grid-column: span 2; grid-row: span 2; }
+    .tile--calendar { grid-column: span 3; grid-row: span 2; }
+    .grid[data-cols="2"] .tile--calendar { grid-column: span 2; }
 
     /* Agenda */
     .agenda { display: grid; gap: 6px; }
@@ -1039,6 +1042,7 @@
       99: ['storm', 'storm', 'Zwaar onweer met hagel']
     };
 
+    const GRID_MAX = 8;               // maximaal aantal kolommen en rijen
     const THEMES = ['light', 'dark', 'system'];
     const TILE_STYLES = ['rounded', 'square'];
     const LINK_PROTOCOLS = ['http:', 'https:', 'mailto:'];
@@ -1055,8 +1059,8 @@
       appearance: {
         theme: 'system',                           // 'light' | 'dark' | 'system'
         accentColor: '#2563eb',
-        gridColumns: 4,                            // 2–4
-        gridRows: 4,                               // 2–4
+        gridColumns: 4,                            // 2–8
+        gridRows: 4,                               // 2–8
         tileStyle: 'rounded',                      // 'rounded' | 'square'
         favicons: true,                            // favicons bij links, via Google
         background: { type: 'none', color: '#dfe7f2', image: '' }   // type: 'none' | 'color' | 'image'
@@ -1102,10 +1106,10 @@
     const LINK_DEFAULTS = { label: '', url: '' };
 
     const TILE_TYPES = {
-      link: { label: 'Gewone tegel', cells: 1, defaultTitle: 'Nieuwe tegel', icon: 'link' },
-      links: { label: 'Link-tegel (lijst)', cells: 1, defaultTitle: 'Links', icon: 'bookmark' },
-      rss: { label: 'RSS-feed (2 × 1)', cells: 2, defaultTitle: 'Nieuws', icon: 'rss' },
-      calendar: { label: 'Agenda (2 × 2)', cells: 4, defaultTitle: 'Agenda', icon: 'calendar' }
+      link: { label: 'Gewone tegel', width: 1, height: 1, defaultTitle: 'Nieuwe tegel', icon: 'link' },
+      links: { label: 'Link-tegel (lijst)', width: 1, height: 1, defaultTitle: 'Links', icon: 'bookmark' },
+      rss: { label: 'RSS-feed (2 × 1)', width: 2, height: 1, defaultTitle: 'Nieuws', icon: 'rss' },
+      calendar: { label: 'Agenda (3 × 2)', width: 3, height: 2, defaultTitle: 'Agenda', icon: 'calendar' }
     };
 
     const TARGET_KINDS = {
@@ -1272,7 +1276,6 @@
     const DATE_FORMAT = new Intl.DateTimeFormat('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
     const SHORT_DATE_FORMAT = new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'short' });
     const FULL_DATE_TIME_FORMAT = new Intl.DateTimeFormat('nl-NL', { dateStyle: 'full', timeStyle: 'short' });
-    const RELATIVE_TIME_FORMAT = new Intl.RelativeTimeFormat('nl', { numeric: 'auto' });
     const AGENDA_DAY_FORMAT = new Intl.DateTimeFormat('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' });
     const AGENDA_FULL_DAY_FORMAT = new Intl.DateTimeFormat('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
 
@@ -1436,8 +1439,8 @@
         .map(item => ({ id: uniqueId(item.id), ...mergeDefaults(LINK_DEFAULTS, item) }));
 
       const { appearance } = data;
-      appearance.gridColumns = clamp(Math.round(appearance.gridColumns), 2, 4);
-      appearance.gridRows = clamp(Math.round(appearance.gridRows), 2, 4);
+      appearance.gridColumns = clamp(Math.round(appearance.gridColumns), 2, GRID_MAX);
+      appearance.gridRows = clamp(Math.round(appearance.gridRows), 2, GRID_MAX);
       if (!THEMES.includes(appearance.theme)) appearance.theme = DEFAULT_CONFIG.appearance.theme;
       if (!TILE_STYLES.includes(appearance.tileStyle)) appearance.tileStyle = DEFAULT_CONFIG.appearance.tileStyle;
       if (!isHexColor(appearance.accentColor)) appearance.accentColor = DEFAULT_CONFIG.appearance.accentColor;
@@ -1600,10 +1603,11 @@
 
     function renderGrid() {
       const { gridColumns, gridRows } = config.appearance;
-      const usedRows = Math.min(gridRows, Math.max(2, Math.ceil(countCells(config.tiles) / gridColumns)));
+      const usedRows = Math.min(gridRows, Math.max(2, Math.ceil(countCells(config.tiles, gridColumns) / gridColumns)));
 
       const grid = $('#tileGrid');
       grid.style.setProperty('--cfg-cols', gridColumns);
+      grid.dataset.cols = gridColumns;
       grid.style.setProperty('--fit-rows', usedRows);
 
       const tiles = config.tiles.map(buildTile).filter(Boolean);
@@ -1613,8 +1617,14 @@
       grid.replaceChildren(...tiles);
     }
 
-    function countCells(tiles) {
-      return tiles.reduce((sum, tile) => sum + (TILE_TYPES[tile.type]?.cells ?? 1), 0);
+    // Aantal cellen dat een tegel inneemt; nooit breder dan het grid (de agenda is bij 2 kolommen 2 breed).
+    function tileCells(type, columns) {
+      const meta = TILE_TYPES[type] ?? { width: 1, height: 1 };
+      return Math.min(meta.width, columns) * meta.height;
+    }
+
+    function countCells(tiles, columns) {
+      return tiles.reduce((sum, tile) => sum + tileCells(tile.type, columns), 0);
     }
 
     function buildTile(tile) {
@@ -1731,7 +1741,7 @@
           const date = item.date ? new Date(item.date) : null;
           const content = [
             el('span', { class: 'feed-title' }, item.title || item.link),
-            date ? el('time', { class: 'feed-meta', datetime: date.toISOString(), title: FULL_DATE_TIME_FORMAT.format(date) }, relativeTime(date)) : null
+            date ? el('time', { class: 'feed-meta', datetime: date.toISOString(), title: FULL_DATE_TIME_FORMAT.format(date) }, shortAge(date)) : null
           ];
           return el('li', {}, href
             ? el('a', { class: 'feed-item', ...linkAttributes(href) }, content)
@@ -2909,7 +2919,7 @@
     function validateDraft(data) {
       const { gridColumns, gridRows } = data.appearance;
       const capacity = gridColumns * gridRows;
-      const used = countCells(data.tiles);
+      const used = countCells(data.tiles, gridColumns);
       if (used > capacity) {
         return {
           section: 'tiles',
@@ -3026,7 +3036,7 @@
       const type = $('#newTileType').value;
       const meta = TILE_TYPES[type];
       const { gridColumns, gridRows } = draft.appearance;
-      if (countCells(draft.tiles) + meta.cells > gridColumns * gridRows) {
+      if (countCells(draft.tiles, gridColumns) + tileCells(type, gridColumns) > gridColumns * gridRows) {
         toast(`Er is geen ruimte meer voor een ${meta.label.toLowerCase()}. ` +
           'Maak het grid groter via Uiterlijk, of verwijder een tegel.');
         return;
@@ -3155,7 +3165,7 @@
 
     function renderAppearanceSettings() {
       const { appearance } = draft;
-      const gridOptions = [[2, '2'], [3, '3'], [4, '4']];
+      const gridOptions = Array.from({ length: GRID_MAX - 1 }, (_, index) => [index + 2, String(index + 2)]);
       return [
         buildSettingsGroup('Thema en kleur', null,
           field('Thema', selectFor('appearance.theme', [
@@ -3181,7 +3191,7 @@
             ? imageField('background', appearance.background.image, 'appearance.background.image')
             : null),
         buildSettingsGroup('Grid en tegels',
-          `Ruimte voor ${appearance.gridColumns * appearance.gridRows} cellen; de agenda gebruikt er 4, een RSS-tegel 2.`,
+          `Ruimte voor ${appearance.gridColumns * appearance.gridRows} cellen; de agenda gebruikt er 6, een RSS-tegel 2.`,
           el('div', { class: 'inline' },
             field('Kolommen', selectFor('appearance.gridColumns', gridOptions, { 'data-type': 'number', 'data-rerender': true })),
             field('Rijen', selectFor('appearance.gridRows', gridOptions, { 'data-type': 'number', 'data-rerender': true }))),
@@ -3202,7 +3212,7 @@
 
       const { gridColumns, gridRows } = draft.appearance;
       const capacity = gridColumns * gridRows;
-      const used = countCells(draft.tiles);
+      const used = countCells(draft.tiles, gridColumns);
       return [
         el('p', { class: `capacity${used > capacity ? ' is-over' : ''}` },
           `${used} van ${capacity} cellen gebruikt (grid ${gridColumns} × ${gridRows}). ` +
@@ -3558,16 +3568,16 @@
       return /^#[0-9a-f]{6}$/i.test(value);
     }
 
-    // "zojuist", "12 minuten geleden", "3 uur geleden", "gisteren", daarna een datum.
-    function relativeTime(date, now = new Date()) {
+    // Korte leeftijd van een bericht: "nu", "35 min", "2 u", "3 d", daarna een datum ("12 sep").
+    function shortAge(date, now = new Date()) {
       const minutes = Math.round((now - date) / 60_000);
-      if (minutes < 1) return 'zojuist';
-      if (minutes < 60) return RELATIVE_TIME_FORMAT.format(-minutes, 'minute');
+      if (minutes < 1) return 'nu';
+      if (minutes < 60) return `${minutes} min`;
       const hours = Math.round(minutes / 60);
-      if (hours < 24) return RELATIVE_TIME_FORMAT.format(-hours, 'hour');
+      if (hours < 24) return `${hours} u`;
       const days = Math.round(hours / 24);
-      if (days < 7) return RELATIVE_TIME_FORMAT.format(-days, 'day');
-      return SHORT_DATE_FORMAT.format(date);
+      if (days < 7) return `${days} d`;
+      return SHORT_DATE_FORMAT.format(date).replace('.', '');
     }
 
     function capitalize(text) {

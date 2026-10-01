@@ -112,6 +112,30 @@ await p.evaluate(async () => { const db = await initDB(); await new Promise(r =>
 await p.reload(); await p.waitForTimeout(800);
 check('oudere Worker: favicons via Google/DuckDuckGo in de browser', directFavicons.some(u => u.startsWith('https://t1.gstatic.com/faviconV2')));
 
+// Vijf berichten passen zonder scrollen in een RSS-tegel (grid 4 × 4 op 1440 × 900)
+await p.evaluate(() => { const d = structuredClone(config); d.tiles.find(t => t.type === 'rss').maxItems = 5; d.tiles = d.tiles.filter(t => t.id !== 'dyn'); applyConfig(normalizeConfig(d)); });
+await p.waitForTimeout(300);
+const fit = await p.evaluate(() => { const b = document.querySelector('.tile--rss .tile-body'); return { items: b.querySelectorAll('.feed-item').length, scroll: b.scrollHeight, client: b.clientHeight, size: Math.round(parseFloat(getComputedStyle(b.querySelector('.feed-title')).fontSize) * 10) / 10 }; });
+check('5 berichten passen zonder scrollen, kleinere tekst', fit.items === 5 && fit.scroll <= fit.client && fit.size < 12.5, JSON.stringify(fit));
+check('korte datum achter het bericht', await p.evaluate(() => /^(nu|\d+ (min|u|d)|\d+ \w{3})$/.test(document.querySelector('.feed-meta').textContent)), await p.evaluate(() => document.querySelector('.feed-meta').textContent));
+await p.screenshot({ path: OUT + '/rss-5.png', clip: await p.evaluate(() => { const r = document.querySelector('.tile--rss').getBoundingClientRect(); return { x: r.x - 8, y: r.y - 8, width: r.width + 16, height: r.height + 16 }; }) });
+
+// Agenda 3 breed; bij 2 kolommen 2 breed
+const widths = await p.evaluate(() => { const one = document.querySelector('.tile--link').getBoundingClientRect().width; return Math.round(document.querySelector('.tile--calendar').getBoundingClientRect().width / one * 10) / 10; });
+check('agenda is 3 tegels breed', widths > 3 && widths < 3.3, String(widths));
+
+// Groter grid: 8 kolommen × 6 rijen kiezen en opslaan
+await p.click('#settingsBtn'); await p.click('[data-section="appearance"]');
+check('kolommen en rijen tot 8', await p.evaluate(() => [...document.querySelectorAll('[data-path="appearance.gridColumns"] option')].map(o => o.value).join() === '2,3,4,5,6,7,8'));
+await p.selectOption('[data-path="appearance.gridColumns"]', '8');
+await p.selectOption('[data-path="appearance.gridRows"]', '6');
+await p.click('[data-action="save-settings"]'); await p.waitForTimeout(300);
+const big = await p.evaluate(() => ({ cols: getComputedStyle(document.querySelector('#tileGrid')).gridTemplateColumns.split(' ').length, overflow: document.documentElement.scrollWidth > innerWidth, saved: config.appearance.gridColumns === 8 && config.appearance.gridRows === 6 }));
+check('grid 8 × 6 opgeslagen, zonder horizontaal scrollen', big.cols === 8 && !big.overflow && big.saved, JSON.stringify(big));
+await p.screenshot({ path: OUT + '/grid-8x6.png' });
+await p.evaluate(() => { const d = structuredClone(config); d.appearance.gridColumns = 2; applyConfig(normalizeConfig(d)); });
+check('bij 2 kolommen is de agenda 2 breed', await p.evaluate(() => getComputedStyle(document.querySelector('#tileGrid')).gridTemplateColumns.split(' ').length === 2));
+
 console.log('paginafouten:', errors.length ? errors : 'geen');
 console.log(fails ? fails + ' FOUT(EN)' : 'ALLES OK');
 await browser.close();

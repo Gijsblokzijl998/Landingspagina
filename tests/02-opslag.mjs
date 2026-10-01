@@ -93,7 +93,7 @@ const norm = await p.evaluate(() => normalizeConfig({
   quickLinks: { items: [{ label: 'Q', url: 'https://q.nl' }, null] }
 }));
 check('normalize: foute typen -> standaard', norm.general.title === 'Mijn Dashboard' && norm.appearance.theme === 'system' && norm.appearance.accentColor === '#2563eb' && norm.appearance.tileStyle === 'rounded');
-check('normalize: grid begrensd 2–4', norm.appearance.gridColumns === 4 && norm.appearance.gridRows === 2);
+check('normalize: grid begrensd 2–8', norm.appearance.gridColumns === 8 && norm.appearance.gridRows === 2);
 check('normalize: ongeldige tegels eruit, velden aangevuld', norm.tiles.length === 2 && norm.tiles[0].target.kind === 'url' && norm.tiles[0].openInApp === true && !('newTab' in norm.tiles[0]));
 check('normalize: dubbele id vervangen', norm.tiles[0].id === 'a' && norm.tiles[1].id !== 'a');
 check('normalize: links-items opgeschoond', norm.tiles[1].links.length === 1 && norm.tiles[1].links[0].url === '');

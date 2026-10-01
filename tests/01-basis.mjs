@@ -25,7 +25,7 @@ console.log('     welkom:', await p.textContent('#welcomeText'), '| datum:', awa
 check('quick links zichtbaar (4)', await p.locator('#quickLinksBar a').count() === 4 && await p.isVisible('#quickLinksBar'));
 const box = await p.locator('.tile--calendar').boundingBox(), one = await p.locator('.tile--link').first().boundingBox();
 console.log('     tegel', one.width, 'x', one.height, '| agenda', box.width, 'x', box.height);
-check('agenda is 2x2', Math.abs(box.width - (2 * one.width + 16)) < 1 && Math.abs(box.height - (2 * one.height + 16)) < 1);
+check('agenda is 3 × 2', Math.abs(box.width - (3 * one.width + 32)) < 1 && Math.abs(box.height - (2 * one.height + 16)) < 1);
 check('geen horizontale scroll', await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
 await p.screenshot({ path: OUT + '/desktop-licht.png' });
 
