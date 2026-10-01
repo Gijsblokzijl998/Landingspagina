@@ -8,13 +8,19 @@
  *   GET /ping            controleert alleen de sleutel ("Verbinding testen" in het dashboard)
  *   GET /rss?url=<feed>  haalt een RSS- of Atom-feed op
  *   GET /ics?url=<ics>   haalt een agenda op (alleen hosts op de allowlist)
+ *   GET /favicon?url=<site>  zoekt het favicon van een site (204 als er geen is)
  *
  * Elk verzoek moet de header X-Dashboard-Key hebben met dezelfde waarde als het secret DASHBOARD_KEY.
  * Het dashboard draait als lokaal bestand en stuurt daardoor "Origin: null"; een origin-controle beschermt dan
  * niets, dus de sleutel is de echte beveiliging. Er worden geen URL's of sleutels gelogd.
  */
 
-const VERSION = '1.0.0';
+const VERSION = '1.1.0';
+
+const FAVICON_CACHE_SECONDS = 7 * 24 * 3600;
+const FAVICON_MISSING_CACHE_SECONDS = 24 * 3600;
+const FAVICON_MAX_BYTES = 256 * 1024;
+const SECOND_LEVEL_SUFFIXES = ['co.uk', 'org.uk', 'ac.uk', 'gov.uk', 'com.au', 'co.nz', 'co.za', 'com.br', 'co.jp'];
 
 // Agenda's mogen alleen van deze hosts komen; extra hosts kunnen via de variabele EXTRA_ICS_HOSTS (kommagescheiden).
 const ICS_HOSTS = ['calendar.google.com', 'outlook.office365.com', 'outlook.live.com'];
@@ -59,9 +65,10 @@ export default {
 
     const { pathname, searchParams } = new URL(request.url);
     if (pathname === '/ping') return jsonResponse(200, { ok: true, version: VERSION });
+    if (pathname === '/favicon') return favicon(searchParams.get('url'), ctx);
 
     const route = ROUTES[pathname];
-    if (!route) return errorResponse(404, 'Onbekende route. Gebruik /ping, /rss of /ics.');
+    if (!route) return errorResponse(404, 'Onbekende route. Gebruik /ping, /rss, /ics of /favicon.');
 
     const target = parseTarget(searchParams.get('url'), route, env);
     if (target.error) return errorResponse(400, target.error);
@@ -112,6 +119,100 @@ async function proxy(target, pathname, route, env, ctx) {
   });
   ctx.waitUntil(cache.put(cacheKey, response.clone()).catch(() => {}));
   return withCors(response, 'MISS');
+}
+
+// Zoekt het favicon van een site. Een server ziet, anders dan de browser, of een bron echt een icoon heeft:
+// eerst het icoon uit de HTML van de site (ook na een doorverwijzing, bv. naar een inlogpagina), dan /favicon.ico,
+// dan Google voor de host en ten slotte Google voor het hoofddomein. Niets gevonden: 204 No Content.
+async function favicon(value, ctx) {
+  let site;
+  try {
+    site = new URL(value);
+  } catch {
+    return errorResponse(400, 'De parameter url is geen geldig adres.');
+  }
+  if (!['http:', 'https:'].includes(site.protocol) || site.username || site.password) {
+    return errorResponse(400, 'Alleen http- of https-adressen zonder wachtwoord zijn toegestaan.');
+  }
+
+  const host = site.hostname.toLowerCase();
+  const cache = caches.default;
+  const cacheKey = new Request(`https://cache.landingspagina.invalid/favicon?host=${encodeURIComponent(host)}`);
+  const cached = await cache.match(cacheKey);
+  if (cached) return withCors(cached, 'HIT');
+
+  const candidates = [];
+  try {
+    const page = await fetch(`${site.protocol}//${host}/`, {
+      headers: { Accept: 'text/html', 'User-Agent': 'Mozilla/5.0 (compatible; Landingspagina-dashboard)' },
+      redirect: 'follow',
+      signal: AbortSignal.timeout(6000)
+    });
+    if ((page.headers.get('Content-Type') ?? '').includes('html')) {
+      const html = new TextDecoder().decode(await readLimited(page, 512 * 1024).catch(() => new Uint8Array()));
+      const base = page.url || `${site.protocol}//${host}/`; // eindadres na eventuele doorverwijzing
+      candidates.push(...iconLinks(html, base), new URL('/favicon.ico', base).href);
+    }
+  } catch {
+    // Site niet bereikbaar: de andere bronnen kunnen het icoon nog kennen.
+  }
+  const domain = registrableDomain(host);
+  candidates.push(`https://${host}/favicon.ico`, googleFavicon(host));
+  if (domain !== host) candidates.push(googleFavicon(domain));
+
+  for (const candidate of [...new Set(candidates)]) {
+    const icon = await fetchImage(candidate);
+    if (!icon) continue;
+    const response = new Response(icon.body, {
+      headers: { 'Content-Type': icon.type, 'Cache-Control': `public, max-age=${FAVICON_CACHE_SECONDS}` }
+    });
+    ctx.waitUntil(cache.put(cacheKey, response.clone()).catch(() => {}));
+    return withCors(response, 'MISS');
+  }
+
+  const missing = new Response(null, { status: 204, headers: { 'Cache-Control': `public, max-age=${FAVICON_MISSING_CACHE_SECONDS}` } });
+  return withCors(missing, 'MISS');
+}
+
+// <link rel="icon" …> en varianten, in volgorde van voorkeur.
+function iconLinks(html, baseUrl) {
+  const links = [];
+  for (const [tag] of html.matchAll(/<link\b[^>]*>/gi)) {
+    const rel = tag.match(/\brel\s*=\s*["']?([^"'>]+)/i)?.[1].toLowerCase() ?? '';
+    const href = tag.match(/\bhref\s*=\s*["']([^"']+)["']/i)?.[1] ?? tag.match(/\bhref\s*=\s*([^\s>]+)/i)?.[1];
+    if (!href || !/(^|\s)(icon|shortcut icon|apple-touch-icon)(\s|$)/.test(rel)) continue;
+    try {
+      const url = new URL(href.replace(/&amp;/g, '&'), baseUrl);
+      if (url.protocol === 'https:' || url.protocol === 'http:') links.push({ url: url.href, touch: rel.includes('apple') });
+    } catch {
+      // Ongeldige href overslaan.
+    }
+  }
+  return [...links.filter(link => !link.touch), ...links.filter(link => link.touch)].map(link => link.url);
+}
+
+async function fetchImage(url) {
+  try {
+    const response = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(5000) });
+    const type = (response.headers.get('Content-Type') ?? '').split(';')[0].trim().toLowerCase();
+    if (!response.ok || !type.startsWith('image/')) return null;
+    const body = await readLimited(response, FAVICON_MAX_BYTES);
+    return body.byteLength > 0 ? { body, type } : null;
+  } catch {
+    return null;
+  }
+}
+
+// Zonder fallback_opts geeft Google een 404 als het de site niet kent, in plaats van een standaardwereldbol.
+function googleFavicon(host) {
+  return `https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&size=32&url=${encodeURIComponent(`https://${host}`)}`;
+}
+
+// vechtdalwonen.operations.eu.dynamics.com → dynamics.com, www.bbc.co.uk → bbc.co.uk
+function registrableDomain(host) {
+  const labels = host.split('.');
+  const size = SECOND_LEVEL_SUFFIXES.includes(labels.slice(-2).join('.')) ? 3 : 2;
+  return labels.slice(-size).join('.');
 }
 
 function parseTarget(value, route, env) {

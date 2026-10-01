@@ -17,6 +17,25 @@ globalThis.fetch = async (url, init) => {
   if (u.hostname === 'traag.example') setTimeout(() => {}, 300);
   if (u.hostname === 'traag.example') return new Promise((_, reject) => init.signal.addEventListener('abort', () => reject(Object.assign(new Error('timeout'), { name: 'TimeoutError' }))));
   if (u.hostname === 'redirect.example') { const r = new Response('x'); Object.defineProperty(r, 'url', { value: 'https://evil.example/cal.ics' }); return r; }
+  // Favicons
+  const png = () => new Response(new Uint8Array([137, 80, 78, 71, 1, 2, 3]), { headers: { 'Content-Type': 'image/png' } });
+  if (u.hostname === 'site.example' && u.pathname === '/') return new Response('<html><head><link rel="apple-touch-icon" href="/touch.png"><link href="/static/icoon.png" rel="shortcut icon"></head></html>', { headers: { 'Content-Type': 'text/html' } });
+  if (u.hostname === 'site.example' && u.pathname === '/static/icoon.png') return png();
+  if (u.hostname === 'kaal.example' && u.pathname === '/') return new Response('<html></html>', { headers: { 'Content-Type': 'text/html' } });
+  if (u.hostname === 'kaal.example' && u.pathname === '/favicon.ico') return new Response(new Uint8Array([0, 0, 1, 0, 9]), { headers: { 'Content-Type': 'image/x-icon' } });
+  if (u.hostname === 'login.microsoftonline.com' && u.pathname === '/') return new Response('x', { headers: { 'Content-Type': 'image/x-icon' } });
+  if (u.hostname === 'vechtdalwonen.operations.eu.dynamics.com' && u.pathname === '/') {
+    // Zoals Dynamics 365: doorverwijzing naar de Microsoft-inlogpagina, die zijn eigen icoon heeft.
+    const r = new Response('<html><link rel="icon" href="https://aadcdn.msftauth.net/shared/favicon.ico"></html>', { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+    Object.defineProperty(r, 'url', { value: 'https://login.microsoftonline.com/common/oauth2/authorize' });
+    return r;
+  }
+  if (u.hostname === 'aadcdn.msftauth.net') return new Response(new Uint8Array([0, 0, 1, 0, 7]), { headers: { 'Content-Type': 'image/x-icon' } });
+  if (u.hostname === 't1.gstatic.com') {
+    return /url=https%3A%2F%2Fdynamics\.com/.test(url) ? png() : new Response('', { status: 404 });
+  }
+  if (u.hostname === 'vechtdalwonen-uat.sandbox.operations.eu.dynamics.com') return new Response('', { status: 404, headers: { 'Content-Type': 'text/html' } });
+  if (u.hostname === 'niets.example') return new Response('', { status: 404, headers: { 'Content-Type': 'text/html' } });
   throw new TypeError('netwerkfout');
 };
 // Kortere time-out voor de test
@@ -84,5 +103,31 @@ r = await call('/ics' + q('http://calendar.google.com/x.ics'));
 check('agenda via http geweigerd', r.status === 400);
 r = await call('/ics' + q('https://redirect.example/cal.ics'));
 check('doorverwijzing naar niet-toegestane host → 403', r.status === 403, r.text);
+
+// --- Favicons ---
+const fav = async site => {
+  const res = await worker.fetch(new Request('https://landingspagina.test.workers.dev/favicon?url=' + encodeURIComponent(site), { headers: { 'X-Dashboard-Key': 'geheim-123' } }), env, ctx);
+  await Promise.all(waits.splice(0));
+  return { status: res.status, type: res.headers.get('Content-Type'), cors: res.headers.get('Access-Control-Allow-Origin'), cache: res.headers.get('X-Cache') };
+};
+const calls = () => upstreamCalls.length;
+let favBefore = calls();
+r = await fav('https://site.example/pagina?x=1');
+check('favicon uit <link rel="shortcut icon"> (voor apple-touch-icon)', r.status === 200 && r.type === 'image/png' && r.cors === '*' && upstreamCalls.includes('https://site.example/static/icoon.png'), JSON.stringify(r));
+favBefore = calls();
+r = await fav('https://site.example/');
+check('favicon tweede keer uit de cache (per host)', r.cache === 'HIT' && calls() === favBefore);
+r = await fav('https://kaal.example/');
+check('zonder <link>: /favicon.ico', r.status === 200 && r.type === 'image/x-icon');
+r = await fav('https://vechtdalwonen.operations.eu.dynamics.com/');
+check('Dynamics: icoon van de inlogpagina na doorverwijzing', r.status === 200 && upstreamCalls.includes('https://aadcdn.msftauth.net/shared/favicon.ico'), JSON.stringify(r));
+r = await fav('https://vechtdalwonen-uat.sandbox.operations.eu.dynamics.com/?cmp=1&mi=DefaultDashboard');
+check('Dynamics UAT: Google kent host niet → hoofddomein dynamics.com', r.status === 200 && r.type === 'image/png' && upstreamCalls.some(u => u.includes('url=https%3A%2F%2Fdynamics.com')), JSON.stringify(r));
+r = await fav('https://niets.example/');
+check('niets gevonden → 204 (geen standaardplaatje)', r.status === 204 && r.cors === '*');
+r = await worker.fetch(new Request('https://landingspagina.test.workers.dev/favicon?url=https%3A%2F%2Fsite.example', { headers: { 'X-Dashboard-Key': 'fout' } }), env, ctx);
+check('favicon vraagt ook de sleutel', r.status === 401);
+r = await fav('javascript:alert(1)');
+check('favicon: alleen http(s)', r.status === 400);
 
 console.log(fails ? fails + ' FOUT(EN)' : 'ALLES OK');

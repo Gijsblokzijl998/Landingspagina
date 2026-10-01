@@ -1,6 +1,6 @@
 # Worker voor RSS en agenda
 
-Het dashboard haalt RSS-feeds en je Google Agenda op via deze Cloudflare Worker. Nieuwssites en Google sturen
+Het dashboard haalt RSS-feeds, je Google Agenda en de favicons van je links op via deze Cloudflare Worker. Nieuwssites en Google sturen
 geen CORS-headers mee, en dan mag de browser die bestanden niet rechtstreeks lezen. De Worker haalt ze op en
 geeft ze ongewijzigd door.
 
@@ -68,6 +68,10 @@ Wat de meldingen betekenen:
 
 ## Bijwerken
 
+Huidige versie: **1.1.0**. Die voegt `/favicon` toe, zodat ook favicons van sites achter een inlogpagina
+(zoals Dynamics 365) goed worden gevonden. Met een oudere Worker gebruikt het dashboard de favicon-diensten in de
+browser. "Verbinding testen" toont welke versie er draait.
+
 Komt er een nieuwe versie van `src/index.js`, plak die dan opnieuw in **Edit code** en klik **Deploy**. Met
 Wrangler doe je `npx wrangler deploy`. De sleutel blijft bewaard.
 
@@ -78,6 +82,7 @@ Wrangler doe je `npx wrangler deploy`. De sleutel blijft bewaard.
 | `GET /ping` | controleert de sleutel ("Verbinding testen") | |
 | `GET /rss?url=…` | RSS- of Atom-feed ophalen | http(s), max. 2 MB, time-out 10 s, cache 15 min |
 | `GET /ics?url=…` | agenda ophalen | alleen https en alleen toegestane hosts, max. 10 MB, time-out 15 s, cache 10 min |
+| `GET /favicon?url=…` | favicon van een site zoeken (vanaf versie 1.1.0) | icoon uit de HTML van de site (ook na doorverwijzing naar een inlogpagina), dan `/favicon.ico`, dan Google voor host en hoofddomein; max. 256 KB; cache 7 dagen; niets gevonden → `204` |
 
 - Elk verzoek heeft de header `X-Dashboard-Key` nodig. De sleutel wordt in constante tijd vergeleken.
 - Het dashboard draait als lokaal bestand en stuurt daardoor `Origin: null`. De Worker antwoordt daarom met

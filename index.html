@@ -7,7 +7,7 @@
     Beveiligingsregel (CSP): alleen de twee ingebouwde scripts (vastgelegd met hun SHA-256), Open-Meteo, de Worker
     op workers.dev en afbeeldingen via https/data/blob/file. Na het wijzigen van een script: node tests/check-csp.mjs --fix
   -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-0rmtLU0ARXSsrvNsuB+4/Bmhz0qNOt8iOlmRWEBipkk=' 'sha256-b8dcIPfcFiJVa5eRhCahyleMZmwzBswtgRYdl2Oke3U='; style-src 'unsafe-inline'; img-src https: data: blob: file:; connect-src https://api.open-meteo.com https://geocoding-api.open-meteo.com https://*.workers.dev; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-0rmtLU0ARXSsrvNsuB+4/Bmhz0qNOt8iOlmRWEBipkk=' 'sha256-xS3cGvUX71wA826Y89y29iumwRup83b4T8uMMvZF6fE='; style-src 'unsafe-inline'; img-src https: data: blob: file:; connect-src https://api.open-meteo.com https://geocoding-api.open-meteo.com https://*.workers.dev; base-uri 'none'; form-action 'none'; object-src 'none'">
   <title>Mijn Dashboard</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='2' width='12' height='12' rx='3' fill='%232563eb'/%3E%3Crect x='18' y='2' width='12' height='12' rx='3' fill='%2360a5fa'/%3E%3Crect x='2' y='18' width='12' height='12' rx='3' fill='%2360a5fa'/%3E%3Crect x='18' y='18' width='12' height='12' rx='3' fill='%232563eb'/%3E%3C/svg%3E">
   <script>
@@ -451,21 +451,23 @@
     .tile-body {
       flex: 1;
       min-height: 0;
-      overflow: auto;
+      overflow-x: hidden;
+      overflow-y: auto;
       scrollbar-width: thin;
       scrollbar-color: var(--border) transparent;
     }
 
-    .tile-list { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+    .tile-list { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
     .tile-list a,
     .tile-list .is-invalid {
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 6px 8px;
+      padding: 3px 6px;
       overflow: hidden;
-      border-radius: 8px;
-      font-size: .9rem;
+      border-radius: 6px;
+      font-size: .82rem;
+      line-height: 1.35;
       text-decoration: none;
       white-space: nowrap;
       text-overflow: ellipsis;
@@ -509,50 +511,52 @@
 
     .tile-state.is-error { color: var(--danger); }
 
-    .feed-list { display: grid; margin: 0 -6px; padding: 0; list-style: none; }
+    .tile--rss { grid-column: span 2; }
+    .feed-list { display: grid; margin: 0; padding: 0; list-style: none; }
     .feed-item {
       display: grid;
-      gap: 1px;
-      padding: 5px 6px;
-      border-radius: 8px;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: baseline;
+      gap: 10px;
+      padding: 3px 6px;
+      border-radius: 6px;
       text-decoration: none;
     }
     a.feed-item:hover { background: var(--surface-hover); }
     a.feed-item:hover .feed-title { color: var(--text); }
     .feed-title {
-      display: -webkit-box;
-      -webkit-box-orient: vertical;
-      -webkit-line-clamp: 2;
       overflow: hidden;
       color: color-mix(in srgb, var(--text) 85%, var(--text-muted));
       font-size: .8rem;
-      line-height: 1.3;
+      line-height: 1.35;
+      white-space: nowrap;
+      text-overflow: ellipsis;
     }
-    .feed-meta { color: var(--text-muted); font-size: .7rem; }
+    .feed-meta { color: var(--text-muted); font-size: .7rem; white-space: nowrap; }
     .feed-stale { margin-top: 6px; color: var(--text-muted); font-size: .7rem; font-style: italic; }
 
     .tile--calendar { grid-column: span 2; grid-row: span 2; }
 
     /* Agenda */
-    .agenda { display: grid; gap: 10px; }
+    .agenda { display: grid; gap: 6px; }
     .agenda-date {
       position: sticky;
       top: 0;
       z-index: 1;
-      padding: 2px 0 3px;
+      padding: 1px 0 2px;
       background: var(--surface);
       color: var(--text-muted);
       font-size: .72rem;
       font-weight: 600;
     }
-    .agenda-list { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+    .agenda-list { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
     .agenda-item {
       display: grid;
       grid-template-columns: 78px minmax(0, 1fr);
       gap: 8px;
-      padding: 4px 6px;
+      padding: 1px 6px;
       border-left: 2px solid transparent;
-      border-radius: 6px;
+      border-radius: 4px;
       font-size: .8rem;
       line-height: 1.3;
     }
@@ -580,7 +584,7 @@
     }
     .quick-links {
       display: flex;
-      gap: 6px;
+      gap: 18px;
       padding: 8px var(--page-pad);
       overflow-x: auto;
       scrollbar-width: thin;
@@ -594,16 +598,14 @@
       display: inline-flex;
       align-items: center;
       gap: 7px;
-      padding: 5px 12px;
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      background: var(--bg);
+      padding: 4px 6px;
+      border-radius: 6px;
       color: var(--text-muted);
       font-size: .8rem;
       text-decoration: none;
-      transition: color .15s, border-color .15s;
+      transition: color .15s;
     }
-    .quick-link:hover { border-color: color-mix(in srgb, var(--text-muted) 60%, var(--border)); color: var(--text); }
+    .quick-link:hover { color: var(--text); }
 
     /* ======================================================================
        Instellingenmodal
@@ -968,11 +970,19 @@
 
     const WEATHER_API = 'https://api.open-meteo.com/v1/forecast';
     const GEOCODING_API = 'https://geocoding-api.open-meteo.com/v1/search';
+    // Zonder fallback_opts geeft Google een fout (en geen standaardwereldbol) als het geen favicon kent,
+    // zodat de volgende bron geprobeerd wordt.
+    const googleFavicon = host => `https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&size=32&url=${encodeURIComponent(`https://${host}`)}`;
     const FAVICON_SOURCES = [
-      host => `https://icons.duckduckgo.com/ip3/${host}.ico`,
-      host => `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=32`,
-      host => `https://${host}/favicon.ico`
+      ({ host }) => googleFavicon(host),
+      ({ host, domain }) => (domain !== host ? googleFavicon(domain) : null),   // bv. ….operations.eu.dynamics.com → dynamics.com
+      ({ host }) => `https://icons.duckduckgo.com/ip3/${host}.ico`,
+      ({ host }) => `https://${host}/favicon.ico`
     ];
+    const FAVICON_MAX_AGE_MS = 7 * 24 * 3600_000;      // via de Worker gevonden favicon
+    const FAVICON_MISSING_MAX_AGE_MS = 24 * 3600_000;  // "deze site heeft geen favicon"
+    // Domeinen waarvan het hoofddomein uit drie delen bestaat (co.uk e.d.).
+    const SECOND_LEVEL_SUFFIXES = ['co.uk', 'org.uk', 'ac.uk', 'gov.uk', 'com.au', 'co.nz', 'co.za', 'com.br', 'co.jp'];
     const WEATHER_REFRESH_MS = 30 * 60_000;
     const RSS_REFRESH_MS = 15 * 60_000;
     const RSS_CACHE_ITEMS = 30;       // zoveel berichten per feed bewaren in de cache
@@ -1094,7 +1104,7 @@
     const TILE_TYPES = {
       link: { label: 'Gewone tegel', cells: 1, defaultTitle: 'Nieuwe tegel', icon: 'link' },
       links: { label: 'Link-tegel (lijst)', cells: 1, defaultTitle: 'Links', icon: 'bookmark' },
-      rss: { label: 'RSS-feed', cells: 1, defaultTitle: 'Nieuws', icon: 'rss' },
+      rss: { label: 'RSS-feed (2 × 1)', cells: 2, defaultTitle: 'Nieuws', icon: 'rss' },
       calendar: { label: 'Agenda (2 × 2)', cells: 4, defaultTitle: 'Agenda', icon: 'calendar' }
     };
 
@@ -1282,6 +1292,7 @@
     const feedRequests = new Map();   // feed-URL → lopende ophaalactie, zodat een feed niet dubbel wordt opgehaald
     const calendarState = new Map();  // agenda-URL → { fetchedAt, name, occurrences, error }
     const calendarRequests = new Map();
+    const faviconRequests = new Map(); // host → Promise<object-URL | null>
     const zoneFormatters = new Map(); // tijdzone → Intl.DateTimeFormat, voor het omrekenen naar UTC
     let activeSettingsSection = SETTINGS_SECTIONS[0].id;
     const timers = {};
@@ -1876,30 +1887,80 @@
       const { protocol, hostname } = new URL(href);
       if (protocol !== 'http:' && protocol !== 'https:') return null;
 
-      let source = 0;
+      const site = { host: hostname, domain: registrableDomain(hostname) };
+      const sources = FAVICON_SOURCES.map(source => source(site)).filter(Boolean);
+      let index = -1;
       const image = el('img', {
         class: 'favicon',
-        src: FAVICON_SOURCES[0](hostname),
         alt: '',
         width: 16,
         height: 16,
         referrerpolicy: 'no-referrer'
       });
+      // nl.wikipedia.org → W, www.google.com → G
+      const showLetter = () => image.replaceWith(
+        el('span', { class: 'favicon favicon--letter', 'aria-hidden': 'true' }, initial(site.domain.split('.')[0])));
       const tryNext = () => {
-        source += 1;
-        if (source < FAVICON_SOURCES.length) {
-          image.src = FAVICON_SOURCES[source](hostname);
-        } else {
-          // nl.wikipedia.org → W, www.google.com → G
-          const labels = hostname.split('.');
-          const name = labels.length > 2 ? labels[labels.length - 2] : labels[0];
-          image.replaceWith(el('span', { class: 'favicon favicon--letter', 'aria-hidden': 'true' }, initial(name)));
-        }
+        index += 1;
+        if (index < sources.length) image.src = sources[index];
+        else showLetter();
       };
       image.addEventListener('error', tryNext);
       // Een (bijna) leeg plaatje telt als mislukt.
       image.addEventListener('load', () => { if (image.naturalWidth < 8) tryNext(); });
+
+      // Met een Worker zoekt die het favicon op (betrouwbaarder). Vindt de Worker niets, dan direct de letter:
+      // de diensten in de browser zouden dan alleen een niet-herkenbaar standaardplaatje geven.
+      // Is de Worker niet bruikbaar (bv. een oudere versie), dan de rij bronnen in de browser.
+      if (config.services.workerUrl) {
+        workerFavicon(site.host).then(result => {
+          if (result?.url) image.src = result.url;
+          else if (result?.missing) showLetter();
+          else tryNext();
+        });
+      } else {
+        tryNext();
+      }
       return image;
+    }
+
+    // Favicon via de Worker, 7 dagen bewaard in IndexedDB (een site zonder favicon 1 dag).
+    // Resultaat: { url } (gevonden), { missing: true } (de site heeft er geen) of null (Worker niet bruikbaar).
+    function workerFavicon(host) {
+      if (!faviconRequests.has(host)) {
+        faviconRequests.set(host, (async () => {
+          const key = `favicon:${host}`;
+          const cached = await idbGet('cache', key).catch(() => null);
+          const maxAge = cached?.blob ? FAVICON_MAX_AGE_MS : FAVICON_MISSING_MAX_AGE_MS;
+          const fromCache = () => (cached?.blob ? { url: URL.createObjectURL(cached.blob) } : null);
+          if (cached && Date.now() - cached.fetchedAt < maxAge) return cached.blob ? fromCache() : { missing: true };
+          try {
+            const response = await fetch(`${workerEndpoint(config.services, '/favicon')}?url=${encodeURIComponent(`https://${host}`)}`, {
+              headers: { 'X-Dashboard-Key': config.services.workerKey },
+              signal: AbortSignal.timeout(15_000)
+            });
+            if (response.status === 204) {
+              idbPut('cache', key, { fetchedAt: Date.now(), blob: null }).catch(() => {});
+              return { missing: true };
+            }
+            const blob = response.ok ? await response.blob() : null;
+            // Een oudere Worker zonder /favicon geeft 404: dan gewoon de bronnen in de browser gebruiken.
+            if (!blob?.type.startsWith('image/')) return fromCache();
+            idbPut('cache', key, { fetchedAt: Date.now(), blob }).catch(() => {});
+            return { url: URL.createObjectURL(blob) };
+          } catch {
+            return fromCache();
+          }
+        })());
+      }
+      return faviconRequests.get(host);
+    }
+
+    // vechtdalwonen.operations.eu.dynamics.com → dynamics.com, www.bbc.co.uk → bbc.co.uk
+    function registrableDomain(hostname) {
+      const labels = hostname.split('.');
+      const size = SECOND_LEVEL_SUFFIXES.includes(labels.slice(-2).join('.')) ? 3 : 2;
+      return labels.slice(-size).join('.');
     }
 
     function renderQuickLinks() {
@@ -3120,14 +3181,14 @@
             ? imageField('background', appearance.background.image, 'appearance.background.image')
             : null),
         buildSettingsGroup('Grid en tegels',
-          `Ruimte voor ${appearance.gridColumns * appearance.gridRows} cellen; de agenda gebruikt er 4.`,
+          `Ruimte voor ${appearance.gridColumns * appearance.gridRows} cellen; de agenda gebruikt er 4, een RSS-tegel 2.`,
           el('div', { class: 'inline' },
             field('Kolommen', selectFor('appearance.gridColumns', gridOptions, { 'data-type': 'number', 'data-rerender': true })),
             field('Rijen', selectFor('appearance.gridRows', gridOptions, { 'data-type': 'number', 'data-rerender': true }))),
           field('Tegelstijl', selectFor('appearance.tileStyle', [['rounded', 'Afgerond'], ['square', 'Vierkant']]))),
         buildSettingsGroup('Favicons',
-          'Kleine logo\'s bij snelle links en links in een link-tegel. Ze komen van DuckDuckGo, Google of de site zelf; ' +
-          'daardoor zien die diensten welke websites in je links staan.',
+          'Kleine logo\'s bij snelle links en links in een link-tegel. Met een Worker zoekt die ze op bij de site zelf of ' +
+          'bij Google; zonder Worker komen ze van Google, DuckDuckGo of de site. Die diensten zien welke websites in je links staan.',
           checkbox('appearance.favicons', 'Favicons tonen'))
       ];
     }

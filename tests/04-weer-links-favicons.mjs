@@ -21,11 +21,13 @@ await ctx.route('https://geocoding-api.open-meteo.com/**', route => route.fulfil
 const faviconRequests = [];
 const icon404 = route => route.fulfill({ status: 404, body: 'niet gevonden' });
 const iconOk = route => route.fulfill({ status: 200, headers: { 'Content-Type': 'image/png' }, body: png });
-await ctx.route('https://icons.duckduckgo.com/**', route => { faviconRequests.push(route.request().url()); return /wikipedia|buienradar/.test(route.request().url()) ? icon404(route) : iconOk(route); });
-await ctx.route('https://www.google.com/s2/favicons**', route => { faviconRequests.push(route.request().url()); return /wikipedia/.test(route.request().url()) ? icon404(route) : iconOk(route); });
+// Zonder Worker: Google (host, dan hoofddomein) → DuckDuckGo → de site zelf → letter.
+// Google kent wikipedia en buienradar niet; DuckDuckGo kent buienradar wel.
+await ctx.route('https://t1.gstatic.com/**', route => { faviconRequests.push(route.request().url()); return /wikipedia|buienradar/.test(decodeURIComponent(route.request().url())) ? icon404(route) : iconOk(route); });
+await ctx.route('https://icons.duckduckgo.com/**', route => { faviconRequests.push(route.request().url()); return /wikipedia/.test(route.request().url()) ? icon404(route) : iconOk(route); });
 await ctx.route('https://nl.wikipedia.org/favicon.ico', route => { faviconRequests.push(route.request().url()); return icon404(route); });
 // Overige externe verzoeken (bijv. bij het openen van tabbladen) niet echt uitvoeren.
-await ctx.route(/^https:\/\/(?!api\.open-meteo|geocoding-api|www\.google\.com\/s2|icons\.duckduckgo|nl\.wikipedia\.org\/favicon)/, route => route.fulfill({ status: 200, body: 'ok' }));
+await ctx.route(/^https:\/\/(?!api\.open-meteo|geocoding-api|t1\.gstatic\.com|icons\.duckduckgo|nl\.wikipedia\.org\/favicon)/, route => route.fulfill({ status: 200, body: 'ok' }));
 
 const errors = [];
 let fails = 0;
@@ -51,9 +53,18 @@ check('favicons in link-tegel', await p.locator('[data-tile-id="t4"] .tile-list 
 await p.waitForTimeout(300);
 const fav = await p.evaluate(() => [...document.querySelectorAll('#quickLinksBar .favicon')].map(f => f.tagName === 'IMG' ? f.src : 'letter:' + f.textContent));
 console.log('     favicons:', fav);
-check('eerste bron DuckDuckGo', fav[0] === 'https://icons.duckduckgo.com/ip3/www.google.com.ico');
-check('terugval naar Google bij 404 (Buienradar)', fav[2].startsWith('https://www.google.com/s2/favicons?domain=www.buienradar.nl'));
-check('laatste terugval: letter (Wikipedia)', fav[1] === 'letter:W');
+check('eerste bron Google voor de host', fav[0] === 'https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&size=32&url=https%3A%2F%2Fwww.google.com');
+check('Google kent hem niet → hoofddomein → DuckDuckGo (Buienradar)', fav[2] === 'https://icons.duckduckgo.com/ip3/www.buienradar.nl.ico'
+  && faviconRequests.some(u => u.includes('url=https%3A%2F%2Fbuienradar.nl')));
+// Playwright onderschept geen aanvragen naar favicon.ico; daarom de geprobeerde bronnen van het plaatje zelf volgen.
+const wikiSteps = await p.evaluate(async () => {
+  const img = buildFavicon('https://nl.wikipedia.org/');
+  const steps = [];
+  new MutationObserver(() => steps.push(img.getAttribute('src'))).observe(img, { attributes: true, attributeFilter: ['src'] });
+  await new Promise(r => setTimeout(r, 1200));
+  return steps;
+});
+check('laatste terugval: letter (Wikipedia), na ook /favicon.ico van de site', fav[1] === 'letter:W' && wikiSteps.at(-1) === 'https://nl.wikipedia.org/favicon.ico', wikiSteps.join(' → '));
 const filterOf = sel => p.evaluate(s => getComputedStyle(document.querySelector(s)).filter, sel);
 check('favicon grijs in rust', (await filterOf('#quickLinksBar .favicon')) === 'grayscale(1)');
 await p.hover('#quickLinksBar a >> nth=0'); await p.waitForTimeout(300);

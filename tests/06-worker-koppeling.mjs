@@ -42,7 +42,7 @@ check('verkeerde sleutel herkend', s.state === 'error' && s.text.includes('sleut
 await p.fill('[data-path="services.workerKey"]', 'mijn-geheime-sleutel');
 await p.click('[data-action="test-worker"]');
 s = await status();
-check('juiste sleutel: verbinding gelukt (ook met / aan het eind)', s.state === 'ok' && s.text.includes('1.0.0'), s.text);
+check('juiste sleutel: verbinding gelukt (ook met / aan het eind)', s.state === 'ok' && /Worker-versie \d/.test(s.text), s.text);
 await p.screenshot({ path: OUT + '/fase6-koppelingen.png' });
 
 workerUp = false;
