@@ -7,15 +7,22 @@ Ontwerp, keuzes en fasering staan in [PROJECTPLAN.md](PROJECTPLAN.md).
 
 ## Status
 
-**Fase 1 (skelet en thema) en fase 2 (opslag) zijn klaar.** Werkend:
-- header met titel, welkomsttekst en klok;
-- het tegelgrid;
-- de balk met snelle links;
-- het licht/donker-thema;
-- instellingen worden bewaard, met een automatische back-up;
-- exporteren, importeren en terugzetten via ⚙ Instellingen → Gegevens.
+**Fase 1 t/m 4 zijn klaar.** Alles stel je in via ⚙ Instellingen:
+- **Tegels** toevoegen, bewerken, ordenen en verwijderen. Een gewone tegel opent:
+  - een **website**;
+  - een **lokaal bestand of map**: plak het pad, bijvoorbeeld via rechtsklik → *Als pad kopiëren* in Verkenner;
+  - een **bestand dat je per sessie kiest**.
+- **Link-tegels** met een lijstje links, en de balk met **snelle links**.
+- **Uiterlijk**: thema, accentkleur, achtergrond (kleur of foto), gridgrootte en tegelstijl, met een live voorbeeld.
+- **Algemeen**: titel, welkomsttekst en logo (adres, pad of upload).
+- **Gegevens**: exporteren, importeren en terugzetten. Instellingen worden bewaard, met een automatische back-up.
 
-Tegels bewerken, het weer, RSS en de agenda volgen in de volgende fases.
+Het weer, RSS en de agenda volgen in de volgende fases.
+
+**Office-bestanden:** een tegel naar een .docx, .xlsx of .pptx probeert het bestand direct in Word, Excel of
+PowerPoint te openen. Edge vraagt daarvoor eerst toestemming. Werkt dat niet, zet dan bij die tegel "Openen in
+Word, Excel of PowerPoint" uit. Edge biedt het bestand dan als download aan, of je kopieert het pad met het
+knopje op de tegel.
 
 ## Installeren als startpagina in Edge
 

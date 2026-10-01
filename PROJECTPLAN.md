@@ -246,8 +246,12 @@ const DEFAULT_CONFIG = {
 | `localStorage` | `lp:config` | de volledige config als JSON (klein, < 50 KB) | synchroon leesbaar, dus de pagina staat er meteen |
 | `localStorage` | `lp:theme` | themavoorkeur (`light` / `dark` / `system`) | leesbaar door het `<head>`-script vóór de paint |
 | IndexedDB `landingspagina` | `kv` | back-up van de config | herstel als localStorage leeg of corrupt is |
-| | `assets` | logo- en achtergrondafbeelding (Blob) | binaire data hoort niet in localStorage (limiet ±5 MB, alleen strings) |
+| | `assets` | gereserveerd (nu ongebruikt; zie hieronder) | |
 | | `cache` | laatste weer-, RSS- en ICS-resultaat + tijdstempel | direct tonen bij het opstarten en offline |
+
+**Afbeeldingen (gewijzigd in fase 4).** Logo en achtergrondafbeelding worden bij het uploaden verkleind (logo
+max. 320 px als PNG, achtergrond max. 1920 px als JPEG) en als data-URL in de config bewaard. Dat houdt het simpel:
+ze gaan vanzelf mee in de back-up en de export. Een achtergrond van ±200–400 KB past ruim in localStorage.
 
 **Opslag bij een lokaal bestand.** Getest in Chromium, de engine van Edge: `localStorage` en IndexedDB werken
 op `file://`, en **alle lokale HTML-bestanden delen één opslag**. Het bestand verplaatsen of vervangen door een
@@ -283,9 +287,11 @@ Een `link`-tegel heeft een `target.kind`:
 **Wat Edge doet met een lokaal pad** (controleren we in fase 3 op Windows):
 - **pdf, afbeeldingen, tekst en html** openen in Edge.
 - **Een map** toont Edge als een klikbaar mappenoverzicht in de browser, niet in Verkenner.
-- **Office-bestanden** (.docx, .xlsx, .pptx) opent Edge niet zelf; die worden als download aangeboden. In fase 3
-  onderzoeken we of de Office-URI's (`ms-word:ofe|u|…`, `ms-excel:…`, `ms-powerpoint:…`) zo'n bestand direct in
-  Word, Excel of PowerPoint kunnen openen. Lukt dat niet, dan is "pad kopiëren" de fallback.
+- **Office-bestanden** (.docx, .xlsx, .pptx) opent Edge niet zelf; die worden als download aangeboden. Daarom
+  gebruikt een pad-tegel met een Office-bestand standaard een Office-URI (`ms-excel:ofe|u|file:///C:/…`), die Word,
+  Excel of PowerPoint start. Volgens de documentatie van Microsoft ondersteunen die URI's officieel alleen
+  http(s)-adressen. Dit is dus **experimenteel** en moet op Windows getest worden. Per tegel is het uit te zetten
+  ("Openen in Word, Excel of PowerPoint"); "pad kopiëren" blijft altijd beschikbaar.
 - **Pad kopiëren** is altijd als tweede actie beschikbaar (knopje op de tegel), om het pad in Verkenner te plakken.
 
 De File System Access API (bestanden "onthouden" via een handle) is niet nodig, omdat directe padlinks werken. Die
@@ -408,8 +414,8 @@ Elke fase levert een werkend `index.html` op en wordt apart gecommit. Grootte: S
 | **0** | Plan & keuzes | dit document | keuzes V1–V5 vastgelegd ✅ | S |
 | **1** | Skelet & thema | HTML-structuur, CSS-variabelen, header, grid met `DEFAULT_CONFIG`-tegels, klok, themaknop, modal-skelet, responsive layout | pagina toont header + grid + quick links; thema wisselt zonder flits en blijft bewaard; goed bij smal en breed venster ✅ | M |
 | **2** | Opslag | `loadData`/`saveData`, `initDB`, `mergeDefaults`, `migrateConfig`, `persist()`, export/import | wijzigingen overleven herladen; corrupte localStorage → herstel uit IndexedDB; export → import geeft identiek dashboard ✅ | M |
-| **3** | Tegels & navigatie | `link` (url / path / session-file), pad kopiëren, Office-URI-onderzoek, `links`-tegel, quick links-balk, grid-capaciteit | alle doeltypen werken in Edge zoals in §6; toetsenbordbediening werkt | M |
-| **4** | Instellingenmodal | zijbalk + alle categorieën uit §3.4, tegel-editor (toevoegen/bewerken/verwijderen/volgorde), validatie, opslaan/annuleren | alles uit `DEFAULT_CONFIG` is via de UI aan te passen zonder code te wijzigen | L |
+| **3** | Tegels & navigatie | `link` (url / path / session-file), pad kopiëren, Office-URI-onderzoek, `links`-tegel, quick links-balk, grid-capaciteit | alle doeltypen werken in Edge zoals in §6; toetsenbordbediening werkt ✅ (Office-URI nog te testen op Windows) | M |
+| **4** | Instellingenmodal | zijbalk + alle categorieën uit §3.4, tegel-editor (toevoegen/bewerken/verwijderen/volgorde), validatie, opslaan/annuleren | alles uit `DEFAULT_CONFIG` is via de UI aan te passen zonder code te wijzigen ✅ (plaats zoeken volgt in fase 5) | L |
 | **5** | Weer | `fetchWeather`, `geocode` in de instellingen, `WMO_CODES`, cache | plaats zoeken → kiezen → weer in de header; offline toont de laatste waarde | S |
 | **6** | Cloudflare Worker | `worker/` met `/rss`, `/ics` en `/ping`, sleutel, allowlist, CORS, README; "Verbinding testen" in de instellingen | Worker gedeployed; testknop groen; verzoek zonder sleutel → 401 | S |
 | **7** | RSS-tegel | `fetchAndRenderRSS`, `parseFeed` (RSS 2.0 / Atom / RDF), verversen, foutstatus | drie verschillende echte feeds tonen correct; foute URL geeft nette melding | M |
@@ -463,5 +469,7 @@ Worker en kan eventueel naar voren.
 1. ~~**Fase 1**: het skelet van `index.html`~~ ✅ (header, grid, snelle links, thema, klok, modal-skelet).
 2. ~~**Fase 2**: opslag~~ ✅ (`loadData`/`saveData`, IndexedDB-back-up met automatisch herstel, export/import/terugzetten
    in Instellingen → Gegevens, synchronisatie tussen tabbladen).
-3. **Fase 3**: tegels en navigatie (paden, sessiebestanden, pad kopiëren, Office-bestanden).
-4. Na elke fase samen kijken en waar nodig het plan bijstellen. Dit document wordt bijgewerkt als keuzes veranderen.
+3. ~~**Fase 3**: tegels en navigatie~~ ✅ (paden, UNC, sessiebestanden, pad kopiëren, Office-URI als optie).
+4. ~~**Fase 4**: instellingenmodal~~ ✅ (alle categorieën, tegel-editor, live voorbeeld, validatie, opslaan/annuleren).
+5. **Fase 5**: weer (Open-Meteo en plaats zoeken).
+6. Na elke fase samen kijken en waar nodig het plan bijstellen. Dit document wordt bijgewerkt als keuzes veranderen.

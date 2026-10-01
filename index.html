@@ -76,7 +76,7 @@
       min-height: 100dvh;
       display: flex;
       flex-direction: column;
-      background: var(--bg);
+      background: var(--page-bg, var(--bg));
       color: var(--text);
       font: 15px/1.45 var(--font);
       -webkit-font-smoothing: antialiased;
@@ -113,7 +113,32 @@
       stroke-linejoin: round;
     }
 
+    [data-background="image"] body {
+      background: var(--bg) var(--page-bg-image) center / cover no-repeat fixed;
+    }
+    /* Op een foto blijven titel en klok leesbaar dankzij een halfdoorzichtige ondergrond. */
+    [data-background="image"] :is(.header-center, .clock) {
+      padding: 6px 14px;
+      border-radius: 12px;
+      background: color-mix(in srgb, var(--surface) 82%, transparent);
+      backdrop-filter: blur(8px);
+    }
+
+    .icon {
+      flex: none;
+      width: 16px;
+      height: 16px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
     .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
       padding: 8px 16px;
       border: 1px solid var(--border);
       border-radius: 10px;
@@ -263,23 +288,72 @@
       box-shadow: var(--shadow);
     }
 
-    a.tile {
-      text-decoration: none;
+    .tile--link {
+      position: relative;
+      padding: 0;
       transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
     }
-    a.tile:hover {
+    .tile--link:not(.is-invalid):hover {
       transform: translateY(-2px);
       box-shadow: var(--shadow-hover);
       border-color: color-mix(in srgb, var(--tile-color, var(--accent)) 45%, var(--border));
     }
+    .tile--link.is-invalid { opacity: .55; }
 
-    .tile--link {
+    .tile-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       gap: 10px;
+      min-height: 0;
+      padding: 14px;
+      border: 0;
+      border-radius: inherit;
+      background: none;
+      color: inherit;
+      font: inherit;
       text-align: center;
+      text-decoration: none;
+      cursor: pointer;
     }
-    .tile--link.is-invalid { opacity: .55; }
+    .is-invalid .tile-main { cursor: default; }
+    .tile-main:focus-visible { outline-offset: -3px; }
+
+    .tile-hint {
+      max-width: 100%;
+      margin-top: -4px;
+      overflow: hidden;
+      color: var(--text-muted);
+      font-size: .75rem;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .tile-action {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      display: grid;
+      place-items: center;
+      width: 30px;
+      height: 30px;
+      padding: 0;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--text-muted);
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity .15s;
+    }
+    .tile:hover .tile-action,
+    .tile-action:focus-visible { opacity: 1; }
+    .tile-action:hover { background: var(--surface-hover); color: var(--text); }
+    @media (hover: none) {
+      .tile-action { opacity: 1; }
+    }
 
     .tile-icon {
       display: grid;
@@ -451,7 +525,125 @@
     }
     .settings-group h4 { font-size: .95rem; font-weight: 600; }
     .settings-group p { max-width: 60ch; color: var(--text-muted); font-size: .9rem; }
-    .settings-group-content { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+    .settings-group-content { display: grid; gap: 14px; margin-top: 6px; }
+    .settings-group-content > :is(.btn, .check, .inline, .office-option) { justify-self: start; }
+
+    .field { display: grid; gap: 4px; max-width: 560px; }
+    .field--wide { max-width: none; }
+    .field-label { font-size: .85rem; font-weight: 600; }
+    .field-hint { max-width: 60ch; color: var(--text-muted); font-size: .8rem; }
+    .static-value { font-weight: 500; }
+
+    .settings-panel :is(input[type="text"], input[type="url"], input[type="password"], input[type="number"], select) {
+      width: 100%;
+      min-width: 0;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--text);
+      font: inherit;
+    }
+    .settings-panel input.input-short { width: 120px; }
+    .settings-panel :is(input, select):focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .settings-panel input:user-invalid { border-color: var(--danger); }
+    .settings-panel input[type="color"] {
+      width: 44px;
+      height: 34px;
+      padding: 2px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      cursor: pointer;
+    }
+
+    .check { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+    .check input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
+    .office-option { display: grid; gap: 4px; }
+
+    .inline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .inline > .field { flex: 1; min-width: 100px; }
+
+    .swatches { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .swatch {
+      width: 26px;
+      height: 26px;
+      padding: 0;
+      border: 2px solid var(--surface);
+      border-radius: 50%;
+      background: var(--swatch);
+      box-shadow: 0 0 0 1px var(--border);
+      cursor: pointer;
+    }
+    .swatch[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--text); }
+
+    .image-preview {
+      max-width: 160px;
+      max-height: 64px;
+      padding: 4px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      object-fit: contain;
+    }
+
+    .capacity { color: var(--text-muted); font-size: .9rem; }
+    .capacity.is-over { color: var(--danger); font-weight: 600; }
+
+    .settings-list { display: grid; gap: 6px; margin: 4px 0 0; padding: 0; list-style: none; }
+    .settings-list-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 6px 6px 10px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--bg);
+    }
+    .item-icon { flex: none; width: 28px; color: var(--accent-text); font-size: 1.15rem; font-weight: 700; text-align: center; }
+    .item-main {
+      flex: 1;
+      display: grid;
+      min-width: 0;
+      padding: 2px 0;
+      border: 0;
+      background: none;
+      text-align: left;
+      cursor: pointer;
+    }
+    .item-title, .item-meta { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .item-title { font-weight: 600; }
+    .item-meta { color: var(--text-muted); font-size: .8rem; }
+
+    .row-actions { display: flex; flex: none; gap: 2px; }
+    .mini-btn {
+      display: inline-grid;
+      place-items: center;
+      width: 30px;
+      height: 30px;
+      padding: 0;
+      border: 0;
+      border-radius: 8px;
+      background: none;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+    .mini-btn:hover:not(:disabled) { background: var(--surface-hover); color: var(--text); }
+    .mini-btn:disabled { opacity: .3; cursor: default; }
+
+    .rows { display: grid; gap: 6px; }
+    .link-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr) auto;
+      gap: 6px;
+      align-items: center;
+    }
+    .rows + .btn { justify-self: start; margin-top: 4px; }
+
+    .add-row { margin-top: 8px; }
+    .add-row select { width: auto; }
+    .back-btn { justify-self: start; }
+    .editor-footer { margin-top: 12px; }
 
     .facts {
       display: grid;
@@ -490,7 +682,7 @@
 
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { transition: none !important; animation: none !important; }
-      a.tile:hover { transform: none; }
+      .tile--link:hover { transform: none; }
     }
   </style>
 </head>
@@ -538,7 +730,7 @@
     <div class="settings">
       <div class="settings-header">
         <h2 id="settingsTitle">Instellingen</h2>
-        <button class="icon-btn" type="button" data-action="close-settings" aria-label="Sluiten" title="Sluiten">
+        <button class="icon-btn" type="button" data-action="cancel-settings" aria-label="Sluiten" title="Sluiten">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
         </button>
       </div>
@@ -547,12 +739,14 @@
         <section id="settingsPanel" class="settings-panel"></section>
       </div>
       <div class="settings-footer">
-        <button class="btn" type="button" data-action="close-settings">Sluiten</button>
+        <button class="btn" type="button" data-action="cancel-settings">Annuleren</button>
+        <button class="btn btn--primary" type="button" data-action="save-settings">Opslaan</button>
       </div>
     </div>
     <input id="importFile" type="file" accept=".json,application/json" hidden>
   </dialog>
 
+  <input id="sessionFileInput" type="file" hidden>
   <div id="toast" class="toast" popover="manual" role="status"></div>
 
   <script>
@@ -584,7 +778,7 @@
         title: 'Mijn Dashboard',
         showWelcome: true,
         welcomeText: '{dagdeel}!',
-        logo: { source: 'none', url: '' }          // 'none' | 'url' | 'upload'
+        logo: { source: 'none', url: '', dataUrl: '' }   // 'none' | 'url' | 'upload' (dataUrl)
       },
       appearance: {
         theme: 'system',                           // 'light' | 'dark' | 'system'
@@ -592,7 +786,7 @@
         gridColumns: 4,                            // 2–4
         gridRows: 4,                               // 2–4
         tileStyle: 'rounded',                      // 'rounded' | 'square'
-        background: { type: 'none', value: '' }    // 'none' | 'color' | 'image'
+        background: { type: 'none', color: '#dfe7f2', image: '' }   // type: 'none' | 'color' | 'image'
       },
       clock: { enabled: true, showSeconds: false, showDate: true },
       weather: {
@@ -627,12 +821,47 @@
 
     // Standaardvelden per tegeltype; ontbrekende velden in opgeslagen of geïmporteerde tegels worden hiermee aangevuld.
     const TILE_DEFAULTS = {
-      link: { title: '', icon: '', color: '', newTab: false, target: { kind: 'url', value: '' } },
+      link: { title: '', icon: '', color: '', newTab: false, openInApp: true, target: { kind: 'url', value: '' } },
       links: { title: '', icon: '', links: [] },
       rss: { title: '', icon: '', feedUrl: '', maxItems: 8 },
       calendar: { title: '', icon: '', icsUrl: '', daysAhead: 30 }
     };
     const LINK_DEFAULTS = { label: '', url: '' };
+
+    const TILE_TYPES = {
+      link: { label: 'Gewone tegel', cells: 1, defaultTitle: 'Nieuwe tegel', icon: '🔗' },
+      links: { label: 'Link-tegel (lijst)', cells: 1, defaultTitle: 'Links', icon: '🗂️' },
+      rss: { label: 'RSS-feed', cells: 1, defaultTitle: 'Nieuws', icon: '📰' },
+      calendar: { label: 'Agenda (2 × 2)', cells: 4, defaultTitle: 'Agenda', icon: '📅' }
+    };
+
+    const TARGET_KINDS = {
+      url: 'Website',
+      path: 'Lokaal bestand of map',
+      'session-file': 'Bestand kiezen (alleen deze sessie)'
+    };
+
+    // Office-bestanden openen via de Office-URI's in Word, Excel of PowerPoint in plaats van ze te downloaden.
+    const OFFICE_SCHEMES = {
+      doc: 'ms-word', docx: 'ms-word', docm: 'ms-word', dotx: 'ms-word',
+      xls: 'ms-excel', xlsx: 'ms-excel', xlsm: 'ms-excel', xlsb: 'ms-excel',
+      ppt: 'ms-powerpoint', pptx: 'ms-powerpoint', pptm: 'ms-powerpoint', ppsx: 'ms-powerpoint'
+    };
+
+    const ACCENT_PRESETS = ['#2563eb', '#7c3aed', '#db2777', '#dc2626', '#ea580c', '#16a34a', '#0d9488', '#475569'];
+    const LOGO_SOURCES = [['none', 'Geen logo'], ['url', 'Adres of pad'], ['upload', 'Afbeelding uploaden']];
+    const BACKGROUND_TYPES = [['none', 'Standaard'], ['color', 'Eigen kleur'], ['image', 'Afbeelding']];
+
+    const ICON_PATHS = {
+      copy: 'M11 9h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2zM5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1',
+      refresh: 'M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15',
+      edit: 'M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z',
+      trash: 'M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2',
+      up: 'M18 15l-6-6-6 6',
+      down: 'M6 9l6 6 6-6',
+      plus: 'M12 5v14M5 12h14',
+      back: 'M15 18l-6-6 6-6'
+    };
 
     // MIGRATIONS[n] zet een config van versie n om naar versie n + 1 (verhoog daarbij CONFIG_VERSION).
     const MIGRATIONS = {};
@@ -656,6 +885,10 @@
        ====================================================================== */
     let config;
     let dbPromise = null;
+    let draft = null;                 // kopie van de config terwijl de instellingen open staan
+    let editingTileId = null;
+    let pendingSessionTileId = null;
+    const sessionFiles = new Map();   // tegel-id → { file, url }, alleen voor deze sessie
     let activeSettingsSection = SETTINGS_SECTIONS[0].id;
     const timers = {};
     const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -691,7 +924,7 @@
         }
       }
 
-      const data = structuredClone(DEFAULT_CONFIG);
+      const data = normalizeConfig(DEFAULT_CONFIG);
       const theme = storageGet(STORAGE_KEYS.theme); // fase 1 bewaarde alleen het thema
       if (THEMES.includes(theme)) data.appearance.theme = theme;
       return { data, status: raw ? 'corrupt' : 'empty' };
@@ -799,7 +1032,8 @@
       appearance.gridRows = clamp(Math.round(appearance.gridRows), 2, 4);
       if (!THEMES.includes(appearance.theme)) appearance.theme = DEFAULT_CONFIG.appearance.theme;
       if (!TILE_STYLES.includes(appearance.tileStyle)) appearance.tileStyle = DEFAULT_CONFIG.appearance.tileStyle;
-      if (!/^#[0-9a-f]{6}$/i.test(appearance.accentColor)) appearance.accentColor = DEFAULT_CONFIG.appearance.accentColor;
+      if (!isHexColor(appearance.accentColor)) appearance.accentColor = DEFAULT_CONFIG.appearance.accentColor;
+      if (!isHexColor(appearance.background.color)) appearance.background.color = DEFAULT_CONFIG.appearance.background.color;
       return data;
     }
 
@@ -810,6 +1044,9 @@
       if (normalized.type === 'links') {
         normalized.links = normalized.links.filter(isPlainObject).map(link => mergeDefaults(LINK_DEFAULTS, link));
       }
+      if (normalized.type === 'link' && !isHexColor(normalized.color)) normalized.color = '';
+      if (normalized.type === 'rss') normalized.maxItems = clamp(Math.round(normalized.maxItems) || 8, 1, 30);
+      if (normalized.type === 'calendar') normalized.daysAhead = clamp(Math.round(normalized.daysAhead) || 30, 1, 90);
       return normalized;
     }
 
@@ -861,7 +1098,7 @@
 
     function resetConfig() {
       if (!confirm('Alle instellingen terugzetten naar de standaard? Dit kan niet ongedaan worden gemaakt.')) return;
-      applyConfig(structuredClone(DEFAULT_CONFIG));
+      applyConfig(normalizeConfig(DEFAULT_CONFIG));
       closeSettings();
       toast('De standaardinstellingen zijn teruggezet.');
     }
@@ -883,11 +1120,17 @@
       renderQuickLinks();
     }
 
-    function applyAppearance() {
+    // Tijdens het bewerken krijgt dit de appearance uit de instellingen mee, als live voorbeeld.
+    function applyAppearance(appearance = config.appearance) {
       const root = document.documentElement;
-      root.style.setProperty('--accent', config.appearance.accentColor);
-      root.dataset.tileStyle = config.appearance.tileStyle;
-      applyTheme();
+      const { type, color, image } = appearance.background;
+      const background = type === 'image' && isImageDataUrl(image) ? 'image' : type === 'color' ? 'color' : 'none';
+      root.style.setProperty('--accent', appearance.accentColor);
+      root.style.setProperty('--page-bg', background === 'color' ? color : '');
+      root.style.setProperty('--page-bg-image', background === 'image' ? `url("${image}")` : '');
+      root.dataset.background = background;
+      root.dataset.tileStyle = appearance.tileStyle;
+      applyTheme(appearance.theme);
     }
 
     function resolveTheme(preference) {
@@ -895,8 +1138,8 @@
       return darkQuery.matches ? 'dark' : 'light';
     }
 
-    function applyTheme() {
-      const theme = resolveTheme(config.appearance.theme);
+    function applyTheme(preference = config.appearance.theme) {
+      const theme = resolveTheme(preference);
       document.documentElement.dataset.theme = theme;
 
       const label = theme === 'dark' ? 'Schakel naar lichte modus' : 'Schakel naar donkere modus';
@@ -911,12 +1154,18 @@
       document.title = title;
 
       const logoImage = $('#logo');
-      const logoSrc = logo.source === 'url' ? safeUrl(logo.url, IMAGE_PROTOCOLS) : null;
+      const logoSrc = resolveLogo(logo);
       logoImage.hidden = !logoSrc;
       if (logoSrc) logoImage.src = logoSrc;
       else logoImage.removeAttribute('src');
 
       $('#clock').hidden = !config.clock.enabled;
+    }
+
+    function resolveLogo(logo) {
+      if (logo.source === 'url') return safeUrl(logo.url, IMAGE_PROTOCOLS) ?? pathToFileUrl(logo.url);
+      if (logo.source === 'upload' && isImageDataUrl(logo.dataUrl)) return logo.dataUrl;
+      return null;
     }
 
     function renderWelcome(now) {
@@ -942,8 +1191,7 @@
 
     function renderGrid() {
       const { gridColumns, gridRows } = config.appearance;
-      const cells = config.tiles.reduce((sum, tile) => sum + (tile.type === 'calendar' ? 4 : 1), 0);
-      const usedRows = Math.min(gridRows, Math.max(2, Math.ceil(cells / gridColumns)));
+      const usedRows = Math.min(gridRows, Math.max(2, Math.ceil(countCells(config.tiles) / gridColumns)));
 
       const grid = $('#tileGrid');
       grid.style.setProperty('--cfg-cols', gridColumns);
@@ -956,6 +1204,10 @@
       grid.replaceChildren(...tiles);
     }
 
+    function countCells(tiles) {
+      return tiles.reduce((sum, tile) => sum + (TILE_TYPES[tile.type]?.cells ?? 1), 0);
+    }
+
     function buildTile(tile) {
       const builder = TILE_BUILDERS[tile.type];
       if (!builder) return null;
@@ -965,38 +1217,79 @@
     }
 
     function buildLinkTile(tile) {
-      const href = resolveTarget(tile.target);
       const style = tile.color ? { '--tile-color': tile.color } : null;
-      const content = [
+      const face = [
         tile.icon
           ? el('span', { class: 'tile-icon', 'aria-hidden': 'true' }, tile.icon)
           : el('span', { class: 'tile-icon tile-icon--letter', 'aria-hidden': 'true' }, initial(tile.title)),
         el('span', { class: 'tile-title' }, tile.title)
       ];
+      if (tile.target.kind === 'session-file') return buildSessionFileTile(tile, style, face);
 
+      const href = resolveTarget(tile);
       if (!href) {
-        return el('div', { class: 'tile tile--link is-invalid', style, title: 'Deze tegel heeft geen geldig doel' }, content);
+        return el('div', { class: 'tile tile--link is-invalid', style, title: 'Deze tegel heeft geen geldig doel' },
+          el('div', { class: 'tile-main' }, face));
       }
-      return el('a', {
-        class: 'tile tile--link',
-        style,
-        href,
-        target: tile.newTab ? '_blank' : null,
-        rel: tile.newTab ? 'noopener noreferrer' : null
-      }, content);
+
+      const isPath = tile.target.kind === 'path';
+      // Een Office-link start een programma; een nieuw tabblad zou dan leeg blijven.
+      const newTab = tile.newTab && !href.startsWith('ms-');
+      return el('div', { class: 'tile tile--link', style },
+        el('a', {
+          class: 'tile-main',
+          href,
+          title: isPath ? cleanPath(tile.target.value) : null,
+          target: newTab ? '_blank' : null,
+          rel: newTab ? 'noopener noreferrer' : null
+        }, face),
+        isPath
+          ? el('button', {
+              class: 'tile-action',
+              type: 'button',
+              'data-action': 'copy-path',
+              'data-path': cleanPath(tile.target.value),
+              title: 'Pad kopiëren',
+              'aria-label': `Pad van ${tile.title} kopiëren`
+            }, icon('copy'))
+          : null);
     }
 
-    function resolveTarget(target) {
-      if (target?.kind === 'url') return safeUrl(target.value, LINK_PROTOCOLS);
-      return null; // 'path' en 'session-file' volgen in fase 3
+    function resolveTarget(tile) {
+      const { kind, value } = tile.target;
+      if (kind === 'url') return safeUrl(value, LINK_PROTOCOLS);
+      if (kind !== 'path') return null;
+      const fileUrl = pathToFileUrl(value);
+      return fileUrl && tile.openInApp ? officeUri(fileUrl) ?? fileUrl : fileUrl;
+    }
+
+    // Een gekozen bestand blijft alleen in deze sessie bewaard; browsers mogen het niet onthouden.
+    function buildSessionFileTile(tile, style, face) {
+      const chosen = sessionFiles.get(tile.id);
+      if (!chosen) {
+        return el('div', { class: 'tile tile--link', style },
+          el('button', { class: 'tile-main', type: 'button', 'data-action': 'pick-session-file' },
+            face, el('span', { class: 'tile-hint' }, 'Bestand kiezen…')));
+      }
+      return el('div', { class: 'tile tile--link', style },
+        el('a', { class: 'tile-main', href: chosen.url, target: '_blank', rel: 'noopener', title: chosen.file.name },
+          face, el('span', { class: 'tile-hint' }, chosen.file.name)),
+        el('button', {
+          class: 'tile-action',
+          type: 'button',
+          'data-action': 'pick-session-file',
+          title: 'Ander bestand kiezen',
+          'aria-label': `Ander bestand kiezen voor ${tile.title}`
+        }, icon('refresh')));
     }
 
     function buildLinksTile(tile) {
       const items = tile.links.map(link => {
         const href = safeUrl(link.url, LINK_PROTOCOLS);
+        const label = link.label || link.url;
         return el('li', {}, href
-          ? el('a', { href }, link.label)
-          : el('span', { class: 'is-invalid', title: 'Ongeldig adres' }, link.label));
+          ? el('a', { href }, label)
+          : el('span', { class: 'is-invalid', title: 'Ongeldig adres' }, label));
       });
 
       return el('section', { class: 'tile tile--links', 'aria-label': tile.title },
@@ -1021,8 +1314,9 @@
       if (tile.type === 'calendar' && !tile.icsUrl) {
         return 'Voeg het iCal-adres van je Google Agenda toe via ⚙ Instellingen → Tegels.';
       }
+      if (tile.type === 'rss' && !tile.feedUrl) return 'Voeg een feed-adres toe via ⚙ Instellingen → Tegels.';
       if (!config.services.workerUrl) return 'Koppel eerst de Worker via ⚙ Instellingen → Koppelingen.';
-      return 'Laden…';
+      return tile.type === 'rss' ? 'De feed wordt vanaf fase 7 opgehaald.' : 'De agenda wordt vanaf fase 8 opgehaald.';
     }
 
     function buildTileHeading(tile) {
@@ -1039,7 +1333,7 @@
       const bar = $('#quickLinksBar');
       const links = config.quickLinks.items.flatMap(item => {
         const href = safeUrl(item.url, LINK_PROTOCOLS);
-        return href ? [el('a', { class: 'quick-link', href }, item.label)] : [];
+        return href ? [el('a', { class: 'quick-link', href }, item.label || item.url)] : [];
       });
       bar.replaceChildren(...links);
       bar.hidden = !config.quickLinks.enabled || !links.length;
@@ -1051,9 +1345,16 @@
     function bindEvents() {
       $('#themeToggle').addEventListener('click', toggleTheme);
       $('#settingsBtn').addEventListener('click', () => openSettings());
+      $('#tileGrid').addEventListener('click', handleTileClick);
+
+      $('#sessionFileInput').addEventListener('change', event => {
+        const [file] = event.target.files;
+        event.target.value = ''; // hetzelfde bestand later opnieuw kunnen kiezen
+        if (file && pendingSessionTileId) openSessionFile(pendingSessionTileId, file);
+      });
 
       darkQuery.addEventListener('change', () => {
-        if (config.appearance.theme === 'system') applyTheme();
+        applyTheme(draft?.appearance.theme ?? config.appearance.theme);
       });
 
       // Timers lopen achter in een verborgen tabblad; bij terugkeer de klok direct gelijkzetten.
@@ -1076,32 +1377,66 @@
       });
 
       const modal = $('#settingsModal');
-      const settingsActions = {
-        'close-settings': closeSettings,
-        'export-config': exportConfig,
-        'import-config': () => $('#importFile').click(),
-        'reset-config': resetConfig
-      };
       modal.addEventListener('click', event => {
         // Een klik precies op het <dialog>-element zelf is een klik op de backdrop.
         if (event.target === modal) {
-          closeSettings();
+          cancelSettings();
           return;
         }
-        const action = event.target.closest('[data-action]')?.dataset.action;
-        if (settingsActions[action]) {
-          settingsActions[action]();
+        const button = event.target.closest('[data-action]');
+        const action = SETTINGS_ACTIONS[button?.dataset.action];
+        if (action) {
+          action(button);
           return;
         }
         const navItem = event.target.closest('[data-section]');
-        if (navItem) renderSettingsSection(navItem.dataset.section);
+        if (navItem) {
+          editingTileId = null;
+          renderSettingsSection(navItem.dataset.section);
+        }
       });
+      // Esc: zelf afhandelen, zodat niet-opgeslagen wijzigingen niet ongemerkt verdwijnen.
+      modal.addEventListener('cancel', event => {
+        event.preventDefault();
+        cancelSettings();
+      });
+
+      $('#settingsPanel').addEventListener('input', handleSettingsInput);
+      $('#settingsPanel').addEventListener('change', handleSettingsChange);
 
       $('#importFile').addEventListener('change', event => {
         const [file] = event.target.files;
-        event.target.value = ''; // hetzelfde bestand later opnieuw kunnen kiezen
+        event.target.value = '';
         if (file) importConfig(file);
       });
+    }
+
+    function handleTileClick(event) {
+      const button = event.target.closest('button[data-action]');
+      if (!button) return;
+      if (button.dataset.action === 'copy-path') copyText(button.dataset.path);
+      if (button.dataset.action === 'pick-session-file') {
+        pendingSessionTileId = button.closest('[data-tile-id]').dataset.tileId;
+        $('#sessionFileInput').click();
+      }
+    }
+
+    function openSessionFile(tileId, file) {
+      const previous = sessionFiles.get(tileId);
+      if (previous) URL.revokeObjectURL(previous.url);
+      const url = URL.createObjectURL(file);
+      sessionFiles.set(tileId, { file, url });
+      renderGrid();
+      if (!window.open(url, '_blank')) toast(`"${file.name}" is gekozen. Klik op de tegel om het te openen.`);
+    }
+
+    async function copyText(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+        toast('Pad gekopieerd. Plak het in Verkenner met Ctrl+V.');
+      } catch {
+        toast(`Kopiëren lukte niet. Het pad is: ${text}`);
+      }
     }
 
     function toggleTheme() {
@@ -1124,15 +1459,132 @@
 
     /* ======================================================================
        Instellingen
+       Het formulier werkt op `draft`, een kopie van de config. Pas bij Opslaan
+       wordt die gecontroleerd, opgeschoond en bewaard.
        ====================================================================== */
+    const SETTINGS_RENDERERS = {
+      general: renderGeneralSettings,
+      appearance: renderAppearanceSettings,
+      tiles: renderTileSettings,
+      quickLinks: renderQuickLinkSettings,
+      weather: renderWeatherSettings,
+      services: renderServiceSettings,
+      data: renderDataSettings
+    };
+
+    const SETTINGS_ACTIONS = {
+      'cancel-settings': cancelSettings,
+      'save-settings': saveSettings,
+      'export-config': exportConfig,
+      'import-config': () => $('#importFile').click(),
+      'reset-config': resetConfig,
+      'add-tile': addTile,
+      'edit-tile': button => openTileEditor(button.dataset.id),
+      'close-tile-editor': () => openTileEditor(null),
+      'add-link': button => {
+        getPath(draft, button.dataset.list).push({ label: '', url: '' });
+        rerenderSettings();
+      },
+      'move-item': moveItem,
+      'remove-item': removeItem,
+      'set-accent': button => {
+        draft.appearance.accentColor = button.dataset.color;
+        applyAppearance(draft.appearance);
+        rerenderSettings();
+      },
+      'clear-image': button => {
+        setPath(draft, button.dataset.path, '');
+        applyAppearance(draft.appearance);
+        rerenderSettings();
+      }
+    };
+
+    const IMAGE_SETTINGS = {
+      logo: { path: 'general.logo.dataUrl', maxSize: 320, type: 'image/png' },
+      background: { path: 'appearance.background.image', maxSize: 1920, type: 'image/jpeg', quality: 0.82 }
+    };
+
     function openSettings(sectionId = activeSettingsSection) {
+      draft = structuredClone(config);
+      editingTileId = null;
       renderSettingsNav();
       renderSettingsSection(sectionId);
+      $('#settingsPanel').scrollTop = 0;
       $('#settingsModal').showModal();
     }
 
     function closeSettings() {
+      draft = null;
+      editingTileId = null;
       $('#settingsModal').close();
+    }
+
+    function cancelSettings() {
+      if (isDraftDirty() && !confirm('Je wijzigingen zijn nog niet opgeslagen. Toch sluiten?')) return;
+      closeSettings();
+      applyAppearance(); // live voorbeeld terugdraaien
+    }
+
+    function isDraftDirty() {
+      return Boolean(draft) && JSON.stringify(draft) !== JSON.stringify(config);
+    }
+
+    function saveSettings() {
+      const problem = validateDraft(draft);
+      if (problem) {
+        editingTileId = problem.tileId ?? null;
+        renderSettingsSection(problem.section);
+        toast(problem.message);
+        return;
+      }
+      applyConfig(normalizeConfig(draft));
+      closeSettings();
+      toast('De instellingen zijn opgeslagen.');
+    }
+
+    function validateDraft(data) {
+      const { gridColumns, gridRows } = data.appearance;
+      const capacity = gridColumns * gridRows;
+      const used = countCells(data.tiles);
+      if (used > capacity) {
+        return {
+          section: 'tiles',
+          message: `De tegels hebben ${used} cellen nodig, maar het grid heeft er ${capacity}. ` +
+            'Maak het grid groter (Uiterlijk) of verwijder tegels.'
+        };
+      }
+      for (const tile of data.tiles) {
+        const problem = validateTile(tile);
+        if (problem) {
+          return { section: 'tiles', tileId: tile.id, message: `Tegel "${tile.title || TILE_TYPES[tile.type].label}": ${problem}` };
+        }
+      }
+      if (data.quickLinks.items.some(link => !safeUrl(link.url, LINK_PROTOCOLS))) {
+        return { section: 'quickLinks', message: 'Een van de snelle links heeft geen geldig adres. Begin het adres met https://.' };
+      }
+      if (data.general.logo.source === 'url' && !resolveLogo(data.general.logo)) {
+        return { section: 'general', message: 'Vul een geldig adres of pad in voor het logo.' };
+      }
+      if (data.services.workerUrl && !safeUrl(data.services.workerUrl, ['https:'])) {
+        return { section: 'services', message: 'Het Worker-adres moet met https:// beginnen.' };
+      }
+      return null;
+    }
+
+    function validateTile(tile) {
+      if (tile.type === 'link') {
+        const { kind, value } = tile.target;
+        if (kind === 'url' && !safeUrl(value, LINK_PROTOCOLS)) return 'vul een geldig webadres in, beginnend met https://.';
+        if (kind === 'path' && !pathToFileUrl(value)) return 'vul een geldig pad in, bijvoorbeeld C:\\Users\\…\\Rapport.pdf.';
+      }
+      if (tile.type === 'links' && tile.links.some(link => !safeUrl(link.url, LINK_PROTOCOLS))) {
+        return 'een van de links heeft geen geldig adres.';
+      }
+      if (tile.type === 'rss' && tile.feedUrl && !safeUrl(tile.feedUrl, ['http:', 'https:'])) return 'het feed-adres is ongeldig.';
+      if (tile.type === 'calendar' && tile.icsUrl && !safeUrl(tile.icsUrl, ['https:'])) {
+        return 'het iCal-adres moet met https:// beginnen.';
+      }
+      return null;
     }
 
     function renderSettingsNav() {
@@ -1142,6 +1594,8 @@
 
     function renderSettingsSection(sectionId) {
       const section = SETTINGS_SECTIONS.find(item => item.id === sectionId) ?? SETTINGS_SECTIONS[0];
+      const panel = $('#settingsPanel');
+      const scrollTop = section.id === activeSettingsSection ? panel.scrollTop : 0;
       activeSettingsSection = section.id;
 
       for (const button of $('#settingsNav').children) {
@@ -1149,18 +1603,372 @@
         else button.removeAttribute('aria-current');
       }
 
-      const renderer = SETTINGS_RENDERERS[section.id];
-      $('#settingsPanel').replaceChildren(
+      panel.replaceChildren(
         el('h3', {}, section.label),
         el('p', { class: 'muted' }, section.description),
-        ...(renderer
-          ? renderer()
-          : [el('p', { class: 'settings-placeholder' }, 'Deze instellingen worden in fase 4 toegevoegd.')]));
+        ...SETTINGS_RENDERERS[section.id]());
+      panel.scrollTop = scrollTop;
     }
 
-    const SETTINGS_RENDERERS = {
-      data: renderDataSettings
+    function rerenderSettings() {
+      renderSettingsSection(activeSettingsSection);
+    }
+
+    function handleSettingsInput(event) {
+      const control = event.target;
+      const path = control.dataset.path;
+      if (!path || !draft) return;
+      setPath(draft, path, readControl(control));
+
+      if (path.startsWith('appearance.')) applyAppearance(draft.appearance);
+      // Ander soort doel: het oude adres of pad past daar niet meer bij.
+      if (path.endsWith('.target.kind')) setPath(draft, path.replace(/kind$/, 'value'), '');
+      if (path.endsWith('.target.value')) {
+        const officeOption = $('[data-office-option]', $('#settingsPanel'));
+        if (officeOption) officeOption.hidden = !officeUri(pathToFileUrl(control.value) ?? '');
+      }
+    }
+
+    async function handleSettingsChange(event) {
+      const control = event.target;
+      if (!draft) return;
+      if (control.dataset.image) {
+        await loadImageSetting(control);
+      } else if (control.dataset.colorToggle) {
+        setPath(draft, control.dataset.colorToggle, control.checked ? draft.appearance.accentColor : '');
+      }
+      if (control.matches('[data-image], [data-color-toggle], [data-rerender]')) rerenderSettings();
+    }
+
+    function readControl(control) {
+      if (control.type === 'checkbox') return control.checked;
+      if (control.type === 'number' || control.dataset.type === 'number') return Number(control.value);
+      return control.value;
+    }
+
+    async function loadImageSetting(control) {
+      const [file] = control.files;
+      const setting = IMAGE_SETTINGS[control.dataset.image];
+      if (!file || !setting) return;
+      try {
+        setPath(draft, setting.path, await readImage(file, setting));
+        applyAppearance(draft.appearance);
+      } catch {
+        toast(`"${file.name}" kon niet als afbeelding worden gelezen.`);
+      }
+    }
+
+    function addTile() {
+      const type = $('#newTileType').value;
+      const meta = TILE_TYPES[type];
+      const { gridColumns, gridRows } = draft.appearance;
+      if (countCells(draft.tiles) + meta.cells > gridColumns * gridRows) {
+        toast(`Er is geen ruimte meer voor een ${meta.label.toLowerCase()}. ` +
+          'Maak het grid groter via Uiterlijk, of verwijder een tegel.');
+        return;
+      }
+      const tile = { id: uid(), type, ...structuredClone(TILE_DEFAULTS[type]), title: meta.defaultTitle, icon: meta.icon };
+      draft.tiles.push(tile);
+      openTileEditor(tile.id);
+    }
+
+    function openTileEditor(tileId) {
+      editingTileId = tileId;
+      renderSettingsSection('tiles');
+      $('#settingsPanel').scrollTop = 0;
+    }
+
+    function moveItem(button) {
+      const list = getPath(draft, button.dataset.list);
+      const from = Number(button.dataset.index);
+      const to = from + Number(button.dataset.dir);
+      if (to < 0 || to >= list.length) return;
+      [list[from], list[to]] = [list[to], list[from]];
+      rerenderSettings();
+    }
+
+    function removeItem(button) {
+      const list = getPath(draft, button.dataset.list);
+      const [removed] = list.splice(Number(button.dataset.index), 1);
+      if (removed?.id === editingTileId) editingTileId = null;
+      rerenderSettings();
+    }
+
+    /* ---------- Formulierbouwstenen ---------- */
+    function buildSettingsGroup(title, description, ...content) {
+      return el('section', { class: 'settings-group' },
+        el('h4', {}, title),
+        description ? el('p', {}, description) : null,
+        el('div', { class: 'settings-group-content' }, content));
+    }
+
+    // Een <label> rond één invoerveld maakt het hele label klikbaar; samengestelde velden krijgen een <div>.
+    function field(label, control, hint) {
+      const single = control instanceof HTMLInputElement || control instanceof HTMLSelectElement;
+      return el(single ? 'label' : 'div', { class: 'field' },
+        el('span', { class: 'field-label' }, label),
+        control,
+        hint ? el('span', { class: 'field-hint' }, hint) : null);
+    }
+
+    function inputFor(path, attributes = {}) {
+      return el('input', { type: 'text', value: getPath(draft, path), 'data-path': path, ...attributes });
+    }
+
+    function selectFor(path, options, attributes = {}) {
+      const current = String(getPath(draft, path));
+      return el('select', { 'data-path': path, ...attributes },
+        options.map(([value, label]) => el('option', { value, selected: String(value) === current }, label)));
+    }
+
+    function checkbox(path, label) {
+      return el('label', { class: 'check' },
+        el('input', { type: 'checkbox', 'data-path': path, checked: Boolean(getPath(draft, path)) }),
+        el('span', {}, label));
+    }
+
+    function miniButton(iconName, label, attributes) {
+      return el('button', { class: 'mini-btn', type: 'button', title: label, 'aria-label': label, ...attributes }, icon(iconName));
+    }
+
+    function listControls(listPath, index, length, label) {
+      const item = { 'data-list': listPath, 'data-index': index };
+      return el('span', { class: 'row-actions' },
+        miniButton('up', `${label} omhoog`, { ...item, 'data-action': 'move-item', 'data-dir': -1, disabled: index === 0 }),
+        miniButton('down', `${label} omlaag`, { ...item, 'data-action': 'move-item', 'data-dir': 1, disabled: index === length - 1 }),
+        miniButton('trash', `${label} verwijderen`, { ...item, 'data-action': 'remove-item' }));
+    }
+
+    function buildLinkRows(listPath, items) {
+      return [
+        items.length
+          ? el('div', { class: 'rows' }, items.map((link, index) => el('div', { class: 'link-row' },
+              inputFor(`${listPath}.${index}.label`, { placeholder: 'Naam', 'aria-label': `Naam van link ${index + 1}` }),
+              inputFor(`${listPath}.${index}.url`, { type: 'url', placeholder: 'https://…', 'aria-label': `Adres van link ${index + 1}` }),
+              listControls(listPath, index, items.length, `Link ${index + 1}`))))
+          : el('p', { class: 'field-hint' }, 'Nog geen links.'),
+        el('button', { class: 'btn', type: 'button', 'data-action': 'add-link', 'data-list': listPath }, icon('plus'), 'Link toevoegen')
+      ];
+    }
+
+    function imageField(kind, current, path) {
+      const hasImage = isImageDataUrl(current);
+      return field('Afbeelding',
+        el('div', { class: 'inline' },
+          hasImage ? el('img', { class: 'image-preview', src: current, alt: '' }) : null,
+          el('input', { type: 'file', accept: 'image/*', 'data-image': kind, 'aria-label': 'Afbeelding kiezen' }),
+          hasImage ? el('button', { class: 'btn', type: 'button', 'data-action': 'clear-image', 'data-path': path }, 'Verwijderen') : null),
+        `Wordt verkleind tot maximaal ${IMAGE_SETTINGS[kind].maxSize} pixels en in je instellingen bewaard.`);
+    }
+
+    function colorField(tile, base) {
+      return field('Kleur',
+        el('div', { class: 'inline' },
+          el('label', { class: 'check' },
+            el('input', { type: 'checkbox', 'data-color-toggle': `${base}.color`, checked: Boolean(tile.color) }),
+            el('span', {}, 'Eigen kleur')),
+          tile.color ? inputFor(`${base}.color`, { type: 'color', 'aria-label': 'Tegelkleur' }) : null),
+        'Zonder eigen kleur gebruikt de tegel de accentkleur.');
+    }
+
+    /* ---------- Secties ---------- */
+    function renderGeneralSettings() {
+      const { logo } = draft.general;
+      return [
+        buildSettingsGroup('Titel en welkomsttekst', null,
+          field('Titel', inputFor('general.title', { maxlength: 60 })),
+          checkbox('general.showWelcome', 'Welkomsttekst tonen'),
+          field('Welkomsttekst', inputFor('general.welcomeText', { maxlength: 120 }),
+            '{dagdeel} wordt vervangen door Goedemorgen, Goedemiddag, Goedenavond of Goedenacht.')),
+        buildSettingsGroup('Logo', 'Wordt links in de kopbalk getoond.',
+          field('Logo', selectFor('general.logo.source', LOGO_SOURCES, { 'data-rerender': true })),
+          logo.source === 'url'
+            ? field('Adres of pad', inputFor('general.logo.url', { placeholder: 'https://… of C:\\Users\\…\\logo.png' }))
+            : null,
+          logo.source === 'upload' ? imageField('logo', logo.dataUrl, 'general.logo.dataUrl') : null)
+      ];
+    }
+
+    function renderAppearanceSettings() {
+      const { appearance } = draft;
+      const gridOptions = [[2, '2'], [3, '3'], [4, '4']];
+      return [
+        buildSettingsGroup('Thema en kleur', null,
+          field('Thema', selectFor('appearance.theme', [
+            ['system', 'Systeem (volgt Windows)'], ['light', 'Licht'], ['dark', 'Donker']
+          ])),
+          field('Accentkleur', el('div', { class: 'swatches' },
+            ACCENT_PRESETS.map(color => el('button', {
+              class: 'swatch',
+              type: 'button',
+              style: { '--swatch': color },
+              'data-action': 'set-accent',
+              'data-color': color,
+              'aria-label': `Accentkleur ${color}`,
+              'aria-pressed': String(color === appearance.accentColor)
+            })),
+            inputFor('appearance.accentColor', { type: 'color', 'aria-label': 'Eigen accentkleur' })))),
+        buildSettingsGroup('Achtergrond', 'Geldt voor het lichte en het donkere thema.',
+          field('Achtergrond', selectFor('appearance.background.type', BACKGROUND_TYPES, { 'data-rerender': true })),
+          appearance.background.type === 'color'
+            ? field('Kleur', inputFor('appearance.background.color', { type: 'color' }))
+            : null,
+          appearance.background.type === 'image'
+            ? imageField('background', appearance.background.image, 'appearance.background.image')
+            : null),
+        buildSettingsGroup('Grid en tegels',
+          `Ruimte voor ${appearance.gridColumns * appearance.gridRows} cellen; de agenda gebruikt er 4.`,
+          el('div', { class: 'inline' },
+            field('Kolommen', selectFor('appearance.gridColumns', gridOptions, { 'data-type': 'number', 'data-rerender': true })),
+            field('Rijen', selectFor('appearance.gridRows', gridOptions, { 'data-type': 'number', 'data-rerender': true }))),
+          field('Tegelstijl', selectFor('appearance.tileStyle', [['rounded', 'Afgerond'], ['square', 'Vierkant']])))
+      ];
+    }
+
+    function renderTileSettings() {
+      if (editingTileId) {
+        const index = draft.tiles.findIndex(tile => tile.id === editingTileId);
+        if (index >= 0) return renderTileEditor(index);
+        editingTileId = null;
+      }
+
+      const { gridColumns, gridRows } = draft.appearance;
+      const capacity = gridColumns * gridRows;
+      const used = countCells(draft.tiles);
+      return [
+        el('p', { class: `capacity${used > capacity ? ' is-over' : ''}` },
+          `${used} van ${capacity} cellen gebruikt (grid ${gridColumns} × ${gridRows}).`),
+        draft.tiles.length
+          ? el('ul', { class: 'settings-list' }, draft.tiles.map((tile, index) => el('li', { class: 'settings-list-item' },
+              el('span', { class: 'item-icon', 'aria-hidden': 'true' }, tile.icon || initial(tile.title)),
+              el('button', { class: 'item-main', type: 'button', 'data-action': 'edit-tile', 'data-id': tile.id },
+                el('span', { class: 'item-title' }, tile.title || '(zonder titel)'),
+                el('span', { class: 'item-meta' }, describeTile(tile))),
+              miniButton('edit', `${tile.title || 'Tegel'} bewerken`, { 'data-action': 'edit-tile', 'data-id': tile.id }),
+              listControls('tiles', index, draft.tiles.length, tile.title || 'Tegel'))))
+          : el('p', { class: 'muted' }, 'Nog geen tegels.'),
+        el('div', { class: 'inline add-row' },
+          el('select', { id: 'newTileType', 'aria-label': 'Soort tegel' },
+            Object.entries(TILE_TYPES).map(([type, meta]) => el('option', { value: type }, meta.label))),
+          el('button', { class: 'btn btn--primary', type: 'button', 'data-action': 'add-tile' }, icon('plus'), 'Tegel toevoegen'))
+      ];
+    }
+
+    function describeTile(tile) {
+      if (tile.type === 'link') {
+        const { kind, value } = tile.target;
+        return kind === 'session-file' ? TARGET_KINDS[kind] : `${TARGET_KINDS[kind] ?? 'Doel'}: ${value || '—'}`;
+      }
+      if (tile.type === 'links') return `${TILE_TYPES.links.label} · ${tile.links.length} links`;
+      if (tile.type === 'rss') return `${TILE_TYPES.rss.label} · ${tile.feedUrl || 'nog geen adres'}`;
+      return `${TILE_TYPES.calendar.label} · ${tile.icsUrl ? 'agenda gekoppeld' : 'nog geen agenda-adres'}`;
+    }
+
+    const TILE_EDITORS = {
+      link: (tile, base) => {
+        const { kind, value } = tile.target;
+        const isOffice = kind === 'path' && Boolean(officeUri(pathToFileUrl(value) ?? ''));
+        return [
+          field('Doel', selectFor(`${base}.target.kind`, Object.entries(TARGET_KINDS), { 'data-rerender': true })),
+          kind === 'url'
+            ? field('Webadres', inputFor(`${base}.target.value`, { type: 'url', placeholder: 'https://…' }))
+            : null,
+          kind === 'path'
+            ? field('Pad', inputFor(`${base}.target.value`, { placeholder: 'C:\\Users\\…\\Rapport.pdf of \\\\server\\share\\map' }),
+                'Tip: klik in Verkenner met rechts op een bestand of map en kies "Als pad kopiëren". Een map toont Edge als lijst.')
+            : null,
+          kind === 'path'
+            ? el('div', { class: 'office-option', 'data-office-option': true, hidden: !isOffice },
+                checkbox(`${base}.openInApp`, 'Openen in Word, Excel of PowerPoint (experimenteel)'),
+                el('p', { class: 'field-hint' },
+                  'Edge vraagt eerst toestemming om het programma te openen. Werkt het niet, zet dit dan uit: ' +
+                  'Edge downloadt het bestand dan. Het pad kopiëren kan altijd via de knop op de tegel.'))
+            : null,
+          kind === 'session-file'
+            ? el('p', { class: 'field-hint' },
+                'Je kiest het bestand bij de eerste klik op de tegel. Na herladen van de pagina kies je het opnieuw: ' +
+                'browsers mogen een gekozen bestand niet onthouden. Gebruik "Lokaal bestand of map" om een vast pad te bewaren.')
+            : checkbox(`${base}.newTab`, 'Openen in een nieuw tabblad'),
+          colorField(tile, base)
+        ];
+      },
+      links: (tile, base) => [
+        el('div', { class: 'field field--wide' },
+          el('span', { class: 'field-label' }, 'Links'),
+          buildLinkRows(`${base}.links`, tile.links))
+      ],
+      rss: (tile, base) => [
+        field('Feed-adres', inputFor(`${base}.feedUrl`, { type: 'url', placeholder: 'https://…/rss' }),
+          'Het adres van een RSS- of Atom-feed. De feed wordt via de Worker opgehaald (fase 7).'),
+        field('Aantal berichten', inputFor(`${base}.maxItems`, { type: 'number', min: 1, max: 30, class: 'input-short' }))
+      ],
+      calendar: (tile, base) => [
+        field('iCal-adres', inputFor(`${base}.icsUrl`, {
+          type: 'url',
+          placeholder: 'https://calendar.google.com/calendar/ical/…/basic.ics',
+          autocomplete: 'off'
+        }), 'Google Agenda → Instellingen → jouw agenda → Agenda integreren → "Geheim adres in iCal-indeling". ' +
+          'Behandel dit adres als een wachtwoord.'),
+        field('Dagen vooruit', inputFor(`${base}.daysAhead`, { type: 'number', min: 1, max: 90, class: 'input-short' }))
+      ]
     };
+
+    function renderTileEditor(index) {
+      const tile = draft.tiles[index];
+      const base = `tiles.${index}`;
+      return [
+        el('button', { class: 'btn back-btn', type: 'button', 'data-action': 'close-tile-editor' }, icon('back'), 'Alle tegels'),
+        buildSettingsGroup(`${TILE_TYPES[tile.type].label} bewerken`, null,
+          field('Titel', inputFor(`${base}.title`, { maxlength: 60 })),
+          field('Icoon', inputFor(`${base}.icon`, { maxlength: 8, class: 'input-short' }),
+            'Een emoji, bijvoorbeeld 📁. Windows-toets + punt opent de emoji-kiezer. Leeg: de eerste letter van de titel.'),
+          TILE_EDITORS[tile.type](tile, base)),
+        el('div', { class: 'inline editor-footer' },
+          el('button', { class: 'btn btn--primary', type: 'button', 'data-action': 'close-tile-editor' }, 'Klaar'),
+          el('button', {
+            class: 'btn btn--danger',
+            type: 'button',
+            'data-action': 'remove-item',
+            'data-list': 'tiles',
+            'data-index': index
+          }, icon('trash'), 'Tegel verwijderen'))
+      ];
+    }
+
+    function renderQuickLinkSettings() {
+      return [
+        buildSettingsGroup('Balk', null, checkbox('quickLinks.enabled', 'Balk met snelle links tonen')),
+        buildSettingsGroup('Links', 'Ze verschijnen in deze volgorde onder het grid.',
+          buildLinkRows('quickLinks.items', draft.quickLinks.items))
+      ];
+    }
+
+    function renderWeatherSettings() {
+      return [
+        buildSettingsGroup('Weer', null,
+          checkbox('weather.enabled', 'Weer tonen in de kopbalk'),
+          field('Plaats', el('p', { class: 'static-value' }, draft.weather.location.name),
+            'Een andere plaats zoeken kan vanaf fase 5, als het weer wordt toegevoegd.'),
+          field('Eenheid', selectFor('weather.unit', [['celsius', 'Celsius (°C)'], ['fahrenheit', 'Fahrenheit (°F)']]))),
+        buildSettingsGroup('Klok', null,
+          checkbox('clock.enabled', 'Klok tonen'),
+          checkbox('clock.showSeconds', 'Seconden tonen'),
+          checkbox('clock.showDate', 'Datum tonen'))
+      ];
+    }
+
+    function renderServiceSettings() {
+      return [
+        buildSettingsGroup('Cloudflare Worker',
+          'De Worker haalt RSS-feeds en je agenda op. Het aanmaken van de Worker en de knop "Verbinding testen" volgen in fase 6.',
+          field('Worker-adres', inputFor('services.workerUrl', {
+            type: 'url',
+            placeholder: 'https://landingspagina.<account>.workers.dev'
+          })),
+          field('Sleutel', inputFor('services.workerKey', { type: 'password', autocomplete: 'off' }),
+            'Dezelfde waarde als het secret DASHBOARD_KEY van de Worker.'))
+      ];
+    }
 
     function renderDataSettings() {
       const usage = el('dd', {}, '…');
@@ -1170,7 +1978,7 @@
 
       return [
         buildSettingsGroup('Exporteren',
-          'Download al je instellingen als bestand, als back-up of om over te zetten naar een andere computer. ' +
+          'Download al je opgeslagen instellingen als bestand, als back-up of om over te zetten naar een andere computer. ' +
           'Het bestand bevat ook je agenda-adres en de Worker-sleutel: bewaar het op een veilige plek.',
           el('button', { class: 'btn btn--primary', type: 'button', 'data-action': 'export-config' }, 'Exporteren')),
         buildSettingsGroup('Importeren',
@@ -1204,13 +2012,6 @@
       }
     }
 
-    function buildSettingsGroup(title, description, ...content) {
-      return el('section', { class: 'settings-group' },
-        el('h4', {}, title),
-        el('p', {}, description),
-        el('div', { class: 'settings-group-content' }, content));
-    }
-
     /* ======================================================================
        Hulpfuncties
        ====================================================================== */
@@ -1240,6 +2041,84 @@
       node.showPopover();
       clearTimeout(timers.toast);
       timers.toast = setTimeout(() => node.hidePopover(), 4500);
+    }
+
+    function icon(name) {
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('viewBox', '0 0 24 24');
+      svg.setAttribute('aria-hidden', 'true');
+      svg.classList.add('icon');
+      const path = document.createElementNS(svg.namespaceURI, 'path');
+      path.setAttribute('d', ICON_PATHS[name]);
+      svg.append(path);
+      return svg;
+    }
+
+    function getPath(object, path) {
+      return path.split('.').reduce((value, key) => value?.[key], object);
+    }
+
+    function setPath(object, path, value) {
+      const keys = path.split('.');
+      const last = keys.pop();
+      keys.reduce((target, key) => target[key], object)[last] = value;
+    }
+
+    // "Als pad kopiëren" in Verkenner zet aanhalingstekens om het pad.
+    function cleanPath(value) {
+      return String(value).trim().replace(/^"(.*)"$/, '$1');
+    }
+
+    // C:\map\bestand.pdf → file:///C:/map/bestand.pdf, \\server\share\x → file://server/share/x
+    function pathToFileUrl(value) {
+      const path = cleanPath(value);
+      if (/^file:\/\//i.test(path)) return safeUrl(path, ['file:']);
+      const unc = path.match(/^[\\/]{2}([^\\/]+)[\\/]+(.+)$/);
+      if (unc) return `file://${unc[1]}/${encodePath(unc[2])}`;
+      const drive = path.match(/^([a-z]):(?:[\\/](.*))?$/i);
+      if (drive) return `file:///${drive[1].toUpperCase()}:/${encodePath(drive[2] ?? '')}`;
+      if (path.startsWith('/')) return `file://${encodePath(path)}`;
+      return null;
+    }
+
+    function encodePath(path) {
+      return path.split(/[\\/]+/).map(encodeURIComponent).join('/');
+    }
+
+    function officeUri(fileUrl) {
+      const extension = fileUrl.split(/[?#]/)[0].split('.').pop().toLowerCase();
+      const scheme = OFFICE_SCHEMES[extension];
+      return scheme ? `${scheme}:ofe|u|${fileUrl}` : null;
+    }
+
+    // Verkleint een afbeelding en geeft een data-URL terug die in de config past.
+    function readImage(file, { maxSize, type, quality }) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const image = new Image();
+        image.onload = () => {
+          const width = image.naturalWidth || maxSize;
+          const height = image.naturalHeight || maxSize;
+          const scale = Math.min(1, maxSize / Math.max(width, height));
+          const canvas = el('canvas', { width: Math.round(width * scale), height: Math.round(height * scale) });
+          canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+          URL.revokeObjectURL(url);
+          resolve(canvas.toDataURL(type, quality));
+        };
+        image.onerror = () => {
+          URL.revokeObjectURL(url);
+          reject(new Error('Geen leesbare afbeelding'));
+        };
+        image.src = url;
+      });
+    }
+
+    function isImageDataUrl(value) {
+      return typeof value === 'string' && /^data:image\/(png|jpeg|webp|gif);base64,[a-z0-9+/=]+$/i.test(value);
+    }
+
+    function isHexColor(value) {
+      return /^#[0-9a-f]{6}$/i.test(value);
     }
 
     function isPlainObject(value) {
