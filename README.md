@@ -20,7 +20,7 @@ Ontwerp, keuzes en fasering staan in [PROJECTPLAN.md](PROJECTPLAN.md).
 - **Weer & klok**: het weer in de kopbalk (Open-Meteo). Zoek je plaats op naam; klik op het weer om hem te
   wijzigen.
 
-Alle links openen in een nieuw tabblad. Tegels hebben grijze lijniconen; kies er een uit de set van ruim 40
+Alle links openen in een nieuw tabblad. Tegels hebben grijze lijniconen; kies er een uit de set van 87
 in de tegel-editor. Snelle links staan in een vaste balk onderaan. Snelle links en links in een link-tegel tonen
 het favicon van de site, grijs tot je de link aanwijst. Die favicons komen van DuckDuckGo, Google of de site
 zelf, met de eerste letter als terugval; uitzetten kan bij Uiterlijk.
