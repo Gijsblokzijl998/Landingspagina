@@ -25,14 +25,18 @@ Alles stel je in via **⚙ Instellingen**. Wijzigingen worden pas bewaard als je
     datum). Elke 15 minuten ververst.
   - **Agenda-tegel (standaard 3 × 2, instelbaar van 2 × 2 tot 4 × 4).** De afspraken uit je Google Agenda van
     vandaag en de komende dagen (standaard 30), inclusief herhalende afspraken. Tijden staan in de accentkleur.
-    Afgelopen afspraken worden grijs, de lopende is gemarkeerd.
+    Afgelopen afspraken worden grijs. De lopende afspraak is gemarkeerd met "nog … min", de eerstvolgende met
+    "over … min".
 - **Snelle links** in een vaste balk onderaan, met het favicon van de site. Dat is grijs tot je de link aanwijst.
 - **Kopbalk** met logo, titel en welkomsttekst, het weer van je plaats (Open-Meteo) en de klok.
-- **Uiterlijk.** Licht, donker of systeemthema, accentkleur, achtergrond (kleur of foto), grootte van het grid
-  (tot 8 × 8) en tegelstijl. Je ziet direct een voorbeeld.
+- **Uiterlijk.** Licht, donker of systeemthema, accentkleur en achtergrond: een zacht verloop (zes keuzes), een
+  effen kleur of een foto. Verder de grootte van het grid (tot 8 × 8), de tegelgrootte (*Automatisch* groeit mee
+  op grote schermen, met de tekst), de tegelvorm (vierkant of breder) en de tegelstijl: afgerond, vierkant of
+  *Glas* (doorschijnend). Je ziet direct een voorbeeld.
 - **Gegevens.** Exporteren, importeren en terugzetten. Er is altijd een automatische back-up in de browser.
 
-Alle links openen in een nieuw tabblad.
+Alle links openen in een nieuw tabblad. Lukt het laden van een feed of agenda niet, dan staat er een knop
+*Opnieuw proberen*; ontbreekt een instelling, dan opent een knop direct de juiste plek in Instellingen.
 
 ## Installeren als startpagina in Edge
 
@@ -54,7 +58,8 @@ Alle links openen in een nieuw tabblad.
 ## Bijwerken
 
 Vervang `index.html` door de nieuwe versie. **Je instellingen blijven bewaard.** Edge slaat ze op in de browser
-(gedeeld door alle lokale bestanden), niet in het bestand zelf.
+(gedeeld door alle lokale bestanden), niet in het bestand zelf. Afbeeldingen (logo, achtergrond, tegelachtergronden)
+staan in IndexedDB, zodat ze de kleine opslag van localStorage niet vullen; een export bevat ze wel.
 
 Let op: *Browsegegevens wissen → Cookies en andere sitegegevens* in Edge wist ook de instellingen van het
 dashboard. Maak daarom af en toe een export via ⚙ → **Gegevens** → **Exporteren**. Het exportbestand bevat ook

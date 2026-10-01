@@ -496,7 +496,7 @@ Worker en kan eventueel naar voren.
    - toegankelijkheid: axe-core zonder bevindingen in licht en donker; agenda-contrast en toetsenbordtoegang verbeterd;
    - beveiliging: CSP met SHA-256 van de twee scripts, `connect-src` alleen Open-Meteo en `*.workers.dev`;
      Worker-adressen buiten workers.dev worden met uitleg geweigerd;
-   - tests in de repo (`npm test`, nu 16 suites en ruim 330 controles) en README afgerond.
+   - tests in de repo (`npm test`, nu 17 suites en ruim 370 controles) en README afgerond.
 10. Wensen na gebruik op Windows/Edge, per ronde verwerkt:
     - brede RSS-tegel (2 × 1) met één regel per bericht, compacte links en agenda, snelle links zonder pil,
       favicons via de Worker (`/favicon`, versie 1.1.0), ook voor Dynamics 365;
@@ -504,5 +504,9 @@ Worker en kan eventueel naar voren.
     - favicon van de site als icoon van de RSS-tegel (configversie 3), datum vóór elk bericht en agendatijden in de
       accentkleur, breedte en hoogte van de agenda instelbaar, gedimde achtergrondafbeelding per tegel;
     - tegels vrij plaatsen (ook met lege vakken ertussen), halve tegels, 18 zakelijke iconen en een zoekveld,
-      smallere tijdkolom in de agenda, Worker 1.2.0 (favicon bij sites met een cookiemelding, zoals Tweakers).
+      smallere tijdkolom in de agenda, Worker 1.2.0 (favicon bij sites met een cookiemelding, zoals Tweakers);
+    - na een controle van de hele pagina: afbeeldingen in IndexedDB (config bevat `asset:<id>`), waarschuwing bij
+      wijzigingen uit een ander tabblad, favicons verversen in een tabblad dat lang openstaat, tegelgrootte en
+      -vorm met meeschalende tekst, verlopen als achtergrond, tegelstijl Glas, laad- en foutweergave met knoppen,
+      "nog/over … min" in de agenda, inlaadanimatie, instellingen met iconen en kaartjes, plus kleine fouten.
 11. Verdere wensen of problemen: per onderwerp bijstellen. samen kijken en waar nodig het plan bijstellen. Dit document wordt bijgewerkt als keuzes veranderen.

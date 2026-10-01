@@ -7,7 +7,7 @@ let fails = 0;
 const check = (name, ok) => { if (!ok) fails++; console.log((ok ? 'OK  ' : 'FOUT') + ' ' + name); };
 
 async function page(opts) {
-  const ctx = await browser.newContext(opts);
+  const ctx = await browser.newContext({ reducedMotion: 'reduce', ...opts });
   await ctx.route(/^https?:/, route => route.fulfill({ status: 404, body: '' })); // geen internet nodig
   const p = await ctx.newPage();
   p.on('console', m => { if ((m.type() === 'error' || m.type() === 'warning') && !/Failed to load resource/.test(m.text())) errors.push(m.text()); });

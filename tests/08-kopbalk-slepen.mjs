@@ -1,7 +1,7 @@
 import { INDEX_URL, WORKER_PATH, FIX, OUT } from './helpers.mjs';
 import { chromium } from 'playwright';
 const browser = await chromium.launch();
-const ctx = await browser.newContext({ viewport: { width: 1280, height: 860 } });
+const ctx = await browser.newContext({ reducedMotion: 'reduce',  viewport: { width: 1280, height: 860 } });
 await ctx.route(/^https:/, r => r.fulfill({ status: 404, body: '' }));
 const p = await ctx.newPage();
 const errors = []; p.on('pageerror', e => errors.push(e.message));

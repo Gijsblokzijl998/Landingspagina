@@ -34,7 +34,7 @@ const worker = (await import(WORKER_PATH)).default;
 const env = { DASHBOARD_KEY: 'k' };
 
 const browser = await chromium.launch();
-const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, timezoneId: 'Europe/Amsterdam' });
+const ctx = await browser.newContext({ reducedMotion: 'reduce',  viewport: { width: 1440, height: 900 }, timezoneId: 'Europe/Amsterdam' });
 let oldWorker = false;
 const faviconCalls = [];
 await ctx.route('https://dash.test.workers.dev/**', async route => {

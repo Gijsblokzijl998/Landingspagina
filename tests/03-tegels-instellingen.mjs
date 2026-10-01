@@ -3,7 +3,7 @@ import { chromium } from 'playwright';
 const S = FIX;
 const url = INDEX_URL;
 const browser = await chromium.launch();
-const ctx = await browser.newContext({ viewport: { width: 1280, height: 860 }, colorScheme: 'light' });
+const ctx = await browser.newContext({ reducedMotion: 'reduce',  viewport: { width: 1280, height: 860 }, colorScheme: 'light' });
 await ctx.grantPermissions(['clipboard-read', 'clipboard-write']);
 await ctx.route(/^https?:/, route => route.fulfill({ status: 404, body: '' })); // geen internet nodig
 const errors = [];
@@ -225,7 +225,34 @@ await p.selectOption('[data-path="appearance.background.type"]', 'none');
 await save();
 
 // Export bevat logo
-check('logo zit in de config (en dus in de export)', await p.evaluate(() => isImageDataUrl(config.general.logo.dataUrl)));
+const stored = await p.evaluate(async () => {
+  const saved = JSON.parse(localStorage.getItem('lp:config'));
+  const ref = saved.general.logo.dataUrl;
+  return { ref, inDb: isImageDataUrl(await idbGet('assets', ref.slice(6))), exported: isImageDataUrl(withInlineImages(config).general.logo.dataUrl), size: localStorage.getItem('lp:config').length };
+});
+check('logo in IndexedDB, in localStorage alleen een verwijzing', /^asset:/.test(stored.ref) && stored.inDb && stored.size < 20_000, JSON.stringify({ ...stored, ref: stored.ref.slice(0, 20) }));
+check('export bevat het logo zelf', stored.exported);
+// Oude config met de afbeelding nog in localStorage: verhuist bij het laden naar IndexedDB
+const migrated = await p.evaluate(async () => {
+  const saved = JSON.parse(localStorage.getItem('lp:config'));
+  saved.general.logo.dataUrl = withInlineImages(config).general.logo.dataUrl;
+  localStorage.setItem('lp:config', JSON.stringify(saved));
+  return saved.general.logo.dataUrl.length;
+});
+await p.reload(); await p.waitForTimeout(500);
+check('oude afbeelding in localStorage verhuist naar IndexedDB', await p.evaluate(() => /^asset:/.test(JSON.parse(localStorage.getItem('lp:config')).general.logo.dataUrl) && !document.querySelector('#logo').hidden && document.querySelector('#logo').src.startsWith('data:image/png')), String(migrated));
+// Opruimen: na verwijderen van het logo verdwijnt de afbeelding uit IndexedDB
+await open('general');
+await p.selectOption('[data-path="general.logo.source"]', 'none');
+await p.click('[data-action="clear-image"]').catch(() => {});
+await p.evaluate(() => { draft.general.logo.dataUrl = ''; });
+await save();
+await p.waitForTimeout(2500);
+check('ongebruikte afbeelding opgeruimd', await p.evaluate(async logoRef => {
+  const keys = await idbRequest('assets', 'readonly', store => store.getAllKeys());
+  const used = imageSlots(config).map(([o, k]) => o[k]).filter(isAssetRef).map(r => r.slice(6));
+  return !keys.includes(logoRef.slice(6)) && keys.length === used.length;
+}, stored.ref));
 
 console.log('console-fouten/waarschuwingen:', errors.length ? errors : 'geen');
 console.log(fails ? fails + ' FOUT(EN)' : 'ALLES OK');

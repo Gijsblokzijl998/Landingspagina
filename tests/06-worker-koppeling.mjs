@@ -7,7 +7,7 @@ const worker = (await import(WORKER_PATH)).default;
 const env = { DASHBOARD_KEY: 'mijn-geheime-sleutel', EXTRA_ICS_HOSTS: '' };
 
 const browser = await chromium.launch();
-const ctx = await browser.newContext({ viewport: { width: 1280, height: 860 } });
+const ctx = await browser.newContext({ reducedMotion: 'reduce',  viewport: { width: 1280, height: 860 } });
 let workerUp = true;
 // Alle verzoeken naar de Worker gaan naar de echte Worker-code.
 await ctx.route('https://landingspagina.test.workers.dev/**', async route => {

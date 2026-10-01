@@ -19,7 +19,7 @@ const worker = (await import(WORKER_PATH)).default;
 const env = { DASHBOARD_KEY: 'sleutel-8' };
 
 const browser = await chromium.launch();
-const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, timezoneId: 'Europe/Amsterdam', colorScheme: 'light' });
+const ctx = await browser.newContext({ reducedMotion: 'reduce',  viewport: { width: 1280, height: 900 }, timezoneId: 'Europe/Amsterdam', colorScheme: 'light' });
 await ctx.route('https://dash.test.workers.dev/**', async route => {
   const req = route.request();
   const res = await worker.fetch(new Request(req.url(), { method: req.method(), headers: req.headers() }), env, { waitUntil() {} });

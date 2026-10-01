@@ -3,7 +3,7 @@ import { chromium } from 'playwright';
 import fs from 'node:fs';
 const url = INDEX_URL;
 const browser = await chromium.launch();
-const ctx = await browser.newContext({ viewport: { width: 1280, height: 860 }, colorScheme: 'light', acceptDownloads: true });
+const ctx = await browser.newContext({ reducedMotion: 'reduce',  viewport: { width: 1280, height: 860 }, colorScheme: 'light', acceptDownloads: true });
 await ctx.route(/^https?:/, route => route.fulfill({ status: 404, body: '' })); // geen internet nodig
 const errors = [];
 let fails = 0;

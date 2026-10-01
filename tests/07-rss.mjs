@@ -26,7 +26,7 @@ const worker = (await import(WORKER_PATH)).default;
 const env = { DASHBOARD_KEY: 'sleutel-7', EXTRA_ICS_HOSTS: '' };
 
 const browser = await chromium.launch();
-const ctx = await browser.newContext({ viewport: { width: 1280, height: 860 }, colorScheme: 'light' });
+const ctx = await browser.newContext({ reducedMotion: 'reduce',  viewport: { width: 1280, height: 860 }, colorScheme: 'light' });
 await ctx.route('https://dash.test.workers.dev/**', async route => {
   const req = route.request();
   const res = await worker.fetch(new Request(req.url(), { method: req.method(), headers: req.headers() }), env, { waitUntil() {} });
@@ -138,9 +138,9 @@ check('zonder Worker: uitleg', t.state?.includes('Koppel eerst de Worker'));
 // Geen dubbele verzoeken bij gelijktijdige updates
 await p.evaluate(() => { const d = structuredClone(config); d.services = { workerUrl: 'https://dash.test.workers.dev', workerKey: 'sleutel-7' }; d.tiles.find(t => t.id === 't5').feedUrl = 'https://rdf.example/feed'; config = normalizeConfig(d); });
 store.clear();
-const before = upstream.calls.filter(u => u.includes('rdf.example')).length;
+const before = upstream.calls.filter(u => u === 'https://rdf.example/feed').length;
 await p.evaluate(() => Promise.all([updateFeeds({ force: true }), updateFeeds({ force: true }), updateFeeds({ force: true })]));
-check('gelijktijdige updates halen een feed maar één keer op', upstream.calls.filter(u => u.includes('rdf.example')).length - before === 1);
+check('gelijktijdige updates halen een feed maar één keer op', upstream.calls.filter(u => u === 'https://rdf.example/feed').length - before === 1);
 
 // relativeTime
 const rel = await p.evaluate(() => { const now = new Date('2026-10-01T12:00:00'); return [0.2, 12, 180, 26 * 60, 3 * 1440, 20 * 1440].map(m => feedDate(new Date(now - m * 60_000), now)); });

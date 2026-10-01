@@ -13,7 +13,7 @@ globalThis.fetch = async url => url === ICS_URL
 const worker = (await import(WORKER_PATH)).default;
 
 const browser = await chromium.launch();
-const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, timezoneId: 'Europe/Amsterdam' });
+const ctx = await browser.newContext({ reducedMotion: 'reduce',  viewport: { width: 1440, height: 900 }, timezoneId: 'Europe/Amsterdam' });
 await ctx.route('https://dash.test.workers.dev/**', async route => {
   const req = route.request();
   const res = await worker.fetch(new Request(req.url(), { method: req.method(), headers: req.headers() }), { DASHBOARD_KEY: 'k' }, { waitUntil() {} });

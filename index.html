@@ -7,7 +7,7 @@
     Beveiligingsregel (CSP): alleen de twee ingebouwde scripts (vastgelegd met hun SHA-256), Open-Meteo, de Worker
     op workers.dev en afbeeldingen via https/data/blob/file. Na het wijzigen van een script: node tests/check-csp.mjs --fix
   -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-0rmtLU0ARXSsrvNsuB+4/Bmhz0qNOt8iOlmRWEBipkk=' 'sha256-9rAqvLy0frD7BQ1+zsy6M27eYBDC8b+KuzOXteKfWCQ='; style-src 'unsafe-inline'; img-src https: data: blob: file:; connect-src https://api.open-meteo.com https://geocoding-api.open-meteo.com https://*.workers.dev; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-0rmtLU0ARXSsrvNsuB+4/Bmhz0qNOt8iOlmRWEBipkk=' 'sha256-5km0qM9nL1dBGucTkjOl8xHrmyMwv6Yizzi8xaaYRAE='; style-src 'unsafe-inline'; img-src https: data: blob: file:; connect-src https://api.open-meteo.com https://geocoding-api.open-meteo.com https://*.workers.dev; base-uri 'none'; form-action 'none'; object-src 'none'">
   <title>Mijn Dashboard</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='2' width='12' height='12' rx='3' fill='%232563eb'/%3E%3Crect x='18' y='2' width='12' height='12' rx='3' fill='%2360a5fa'/%3E%3Crect x='2' y='18' width='12' height='12' rx='3' fill='%2360a5fa'/%3E%3Crect x='18' y='18' width='12' height='12' rx='3' fill='%232563eb'/%3E%3C/svg%3E">
   <script>
@@ -44,6 +44,7 @@
       --radius: 16px;
       --radius-sm: 12px;
       --gap: 16px;
+      --fs: 16px;          /* basis voor tekst in tegels; groeit mee met grotere tegels */
       --page-pad: clamp(16px, 4vw, 40px);
       --chrome-h: 160px; /* kopbalk + voetbalk + marges: begrenst de tegelhoogte */
       --font: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -66,6 +67,23 @@
       --backdrop: rgb(0 0 0 / .6);
       color-scheme: dark;
     }
+
+    /* Verlopen als achtergrond: twee zachte kleurvlekken over de gewone achtergrond, in licht en donker thema. */
+    :root { --g-strength: 24%; }
+    [data-theme="dark"] { --g-strength: 20%; }
+    [data-gradient] {
+      --g1: var(--accent);
+      --g2: #14b8a6;
+      --page-gradient:
+        radial-gradient(ellipse 75% 65% at 8% 0%, color-mix(in srgb, var(--g1) var(--g-strength), transparent), transparent 70%),
+        radial-gradient(ellipse 65% 60% at 100% 100%, color-mix(in srgb, var(--g2) var(--g-strength), transparent), transparent 70%),
+        var(--bg);
+    }
+    [data-gradient="ochtend"] { --g1: #fb923c; --g2: #f472b6; }
+    [data-gradient="oceaan"] { --g1: #0ea5e9; --g2: #14b8a6; }
+    [data-gradient="bos"] { --g1: #22c55e; --g2: #0d9488; }
+    [data-gradient="schemer"] { --g1: #8b5cf6; --g2: #ec4899; }
+    [data-gradient="grafiet"] { --g1: #64748b; --g2: #94a3b8; }
 
     [data-tile-style="square"] {
       --radius: 4px;
@@ -122,6 +140,7 @@
     [data-background="image"] body {
       background: var(--bg) var(--page-bg-image) center / cover no-repeat fixed;
     }
+    [data-background="gradient"] body { background: var(--page-gradient); background-attachment: fixed; }
 
 
     .icon {
@@ -255,9 +274,10 @@
       flex-direction: column;
       align-items: flex-end;
       padding: 0 8px;
-      border-left: 1px solid var(--border);
       line-height: 1.2;
     }
+    /* Scheidingslijn tussen weer en klok, alleen als het weer zichtbaar is. */
+    .weather:not([hidden]) + .clock { border-left: 1px solid var(--border); }
     .clock-time { color: var(--text); font-size: .9rem; font-weight: 500; font-variant-numeric: tabular-nums; }
     .clock-date { display: block; font-size: .72rem; }
     .clock-date::first-letter { text-transform: uppercase; }
@@ -295,15 +315,20 @@
     .grid {
       --cols: var(--cfg-cols, 4);
       --rows: var(--fit-rows, 4);
-      /* Vierkante cellen: zo groot als de breedte en de vensterhoogte (voor de gebruikte rijen) toelaten. */
+      --ratio: var(--cfg-ratio, 1);               /* breedte : hoogte van een tegel */
+      --tile-max: var(--cfg-tile-max, 210px);     /* Tegelgrootte in Uiterlijk */
+      /* Tegelhoogte: zo groot als de breedte en de vensterhoogte (voor de gebruikte rijen) toelaten. */
       --tile: clamp(80px, min(
-        (100cqi - (var(--cols) - 1) * var(--gap)) / var(--cols),
+        (100cqi - (var(--cols) - 1) * var(--gap)) / var(--cols) / var(--ratio),
         (100dvh - var(--chrome-h) - (var(--rows) - 1) * var(--gap)) / var(--rows)
-      ), 210px);
+      ), var(--tile-max));
+      --tile-w: calc(var(--tile) * var(--ratio));
       /* Rijen van een halve tegel: een gewone tegel beslaat er twee, een halve tegel één. */
       --half: calc((var(--tile) - var(--gap)) / 2);
+      /* Tekst groeit mee met grote tegels (16 px bij 210 px), maar wordt nooit kleiner dan nu. */
+      --fs: clamp(16px, calc(var(--tile) * 0.0762), 21px);
       display: grid;
-      grid-template-columns: repeat(var(--cols), var(--tile));
+      grid-template-columns: repeat(var(--cols), var(--tile-w));
       grid-auto-rows: var(--half);
       grid-auto-flow: row dense;
       justify-content: center;
@@ -321,6 +346,7 @@
       .grid {
         --cols: 2;
         --gap: 12px;
+        --ratio: 1;
         --tile: calc((100cqi - var(--gap)) / 2);
       }
       /* Smal venster: twee kolommen, tegels in volgorde onder elkaar (vrije posities gelden dan niet). */
@@ -388,7 +414,7 @@
       margin-top: -4px;
       overflow: hidden;
       color: var(--text-muted);
-      font-size: .75rem;
+      font-size: calc(var(--fs) * .75);
       white-space: nowrap;
       text-overflow: ellipsis;
     }
@@ -421,16 +447,16 @@
       display: grid;
       place-items: center;
       flex: none;
-      width: 56px;
-      height: 56px;
+      width: calc(var(--fs) * 3.5);
+      height: calc(var(--fs) * 3.5);
       border-radius: var(--radius-sm);
       background: color-mix(in srgb, var(--tile-color, var(--text-muted)) 11%, transparent);
       color: var(--tile-color, var(--text-muted));
-      font-size: 28px;
+      font-size: calc(var(--fs) * 1.75);
       line-height: 1;
     }
-    .tile-icon .icon { width: 28px; height: 28px; }
-    .tile-icon--letter { font-size: 24px; font-weight: 600; }
+    .tile-icon .icon { width: calc(var(--fs) * 1.75); height: calc(var(--fs) * 1.75); }
+    .tile-icon--letter { font-size: calc(var(--fs) * 1.5); font-weight: 600; }
     /* Emoji's ook in grijstinten, passend bij de lijniconen. */
     .emoji-icon { filter: grayscale(1); }
 
@@ -440,7 +466,7 @@
       -webkit-line-clamp: 2;
       overflow: hidden;
       overflow-wrap: anywhere;
-      font-size: .95rem;
+      font-size: calc(var(--fs) * .95);
       font-weight: 600;
       line-height: 1.25;
     }
@@ -451,7 +477,7 @@
       gap: 6px;
       margin-bottom: 8px;
       color: var(--text-muted);
-      font-size: .85rem;
+      font-size: calc(var(--fs) * .85);
       font-weight: 600;
     }
     .tile-heading span:last-child { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
@@ -476,7 +502,7 @@
       padding: 3px 6px;
       overflow: hidden;
       border-radius: 6px;
-      font-size: .82rem;
+      font-size: calc(var(--fs) * .82);
       line-height: 1.35;
       text-decoration: none;
       white-space: nowrap;
@@ -498,7 +524,7 @@
     a:is(:hover, :focus-visible) > .favicon,
     .tile:hover :is(.tile-heading, .tile-icon) > .favicon,
     .tile:hover .tile-heading > span > .favicon { filter: none; opacity: 1; }
-    .tile-icon > .favicon { width: 28px; height: 28px; border-radius: 6px; }
+    .tile-icon > .favicon { width: calc(var(--fs) * 1.75); height: calc(var(--fs) * 1.75); border-radius: 6px; }
     .tile-icon > .favicon--letter { font-size: 14px; }
     /* Laatste terugval als geen enkele bron een favicon levert: de eerste letter van het domein. */
     .favicon--letter {
@@ -514,16 +540,46 @@
 
     .tile-state {
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
+      gap: 10px;
       height: 100%;
       padding: 8px;
       color: var(--text-muted);
-      font-size: .85rem;
+      font-size: calc(var(--fs) * .85);
       text-align: center;
     }
+    .tile-state.is-error > p { color: var(--danger); }
+    .btn--small { gap: 5px; padding: 4px 10px; font-size: calc(var(--fs) * .75); color: var(--text-muted); }
+    .btn--small:hover { color: var(--text); }
+    .btn--small .icon { width: 14px; height: 14px; }
+    .link-btn {
+      padding: 0;
+      border: 0;
+      background: none;
+      color: var(--accent-text);
+      font: inherit;
+      font-style: normal;
+      text-decoration: underline;
+      cursor: pointer;
+    }
 
-    .tile-state.is-error { color: var(--danger); }
+    /* Laden: grijze regels die zacht pulseren. */
+    .skeleton { display: grid; align-content: start; gap: calc(var(--fs) * .55); padding: 4px 6px; }
+    .skeleton-line {
+      width: var(--w, 80%);
+      height: calc(var(--fs) * .6);
+      border-radius: 4px;
+      background: linear-gradient(90deg,
+        var(--surface-hover) 0%, color-mix(in srgb, var(--text-muted) 16%, var(--surface)) 50%, var(--surface-hover) 100%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s ease-in-out infinite;
+    }
+    @keyframes shimmer {
+      from { background-position: 100% 0; }
+      to { background-position: -100% 0; }
+    }
 
     .tile--rss { padding-top: 11px; padding-bottom: 9px; }
     .tile--rss .tile-heading { margin-bottom: 4px; }
@@ -542,13 +598,13 @@
     .feed-title {
       overflow: hidden;
       color: color-mix(in srgb, var(--text) 85%, var(--text-muted));
-      font-size: .74rem;
+      font-size: calc(var(--fs) * .74);
       line-height: 1.28;
       white-space: nowrap;
       text-overflow: ellipsis;
     }
-    .feed-meta { color: var(--accent-text); font-size: .7rem; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
-    .feed-stale { margin-top: 6px; color: var(--text-muted); font-size: .7rem; font-style: italic; }
+    .feed-meta { color: var(--accent-text); font-size: calc(var(--fs) * .7); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .feed-stale { margin-top: 6px; color: var(--text-muted); font-size: calc(var(--fs) * .7); font-style: italic; }
 
 
     .tile.has-background {
@@ -559,7 +615,11 @@
       background-size: cover;
     }
     .tile.has-background .tile-icon { background: color-mix(in srgb, var(--surface) 70%, transparent); }
-    .tile.has-background .agenda-date { background: none; }
+    /* De vaste dagkop blijft leesbaar boven doorschuivende afspraken, ook op een achtergrond of glas. */
+    :is(.tile.has-background, [data-tile-style="glass"] .tile) .agenda-date {
+      background: color-mix(in srgb, var(--surface) 45%, transparent);
+      backdrop-filter: blur(10px);
+    }
 
     /* Agenda */
     /* Eén tijdkolom voor alle dagen (subgrid), zo breed als de langste tijd. */
@@ -574,7 +634,7 @@
       padding: 1px 0 2px;
       background: var(--surface);
       color: var(--text-muted);
-      font-size: .72rem;
+      font-size: calc(var(--fs) * .72);
       font-weight: 600;
     }
     .agenda-list { display: grid; margin: 0; padding: 0; list-style: none; }
@@ -583,18 +643,33 @@
       padding: 1px 6px;
       border-left: 2px solid transparent;
       border-radius: 4px;
-      font-size: .8rem;
+      font-size: calc(var(--fs) * .8);
       line-height: 1.3;
     }
     /* Afgelopen afspraken grijs (met voldoende contrast), niet doorzichtig. */
     .agenda-item.is-past .agenda-title { color: var(--text-muted); }
     .agenda-item.is-past .agenda-time { text-decoration: line-through; }
-    .agenda-item.is-now { border-left-color: var(--text-muted); background: var(--surface-hover); }
-    .agenda-time { padding-top: 1px; color: var(--accent-text); font-size: .72rem; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    /* De lopende afspraak in de accentkleur; de eerstvolgende met "over … min". */
+    .agenda-item.is-now { border-left-color: var(--accent); background: var(--accent-soft); }
+    .agenda-head { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+    .agenda-head .agenda-title { flex: 0 1 auto; }
+    .agenda-badge {
+      flex: none;
+      padding: 0 6px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent-text);
+      font-size: calc(var(--fs) * .64);
+      font-weight: 600;
+      line-height: 1.6;
+      white-space: nowrap;
+    }
+    .agenda-item.is-now .agenda-badge { background: var(--surface); }
+    .agenda-time { padding-top: 1px; color: var(--accent-text); font-size: calc(var(--fs) * .72); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
     .agenda-item.is-past .agenda-time { color: var(--text-muted); font-weight: 400; }
     .agenda-text { display: grid; min-width: 0; }
     .agenda-title, .agenda-location { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-    .agenda-location { color: var(--text-muted); font-size: .7rem; }
+    .agenda-location { color: var(--text-muted); font-size: calc(var(--fs) * .7); }
 
     /* Verslepen */
     .grid > [draggable="true"] { cursor: grab; }
@@ -608,13 +683,32 @@
       pointer-events: none;
     }
 
+    /* Glas: doorschijnende, wazige tegels; mooi op een verloop of foto. */
+    [data-tile-style="glass"] .tile {
+      background-color: color-mix(in srgb, var(--surface) 60%, transparent);
+      border-color: rgb(255 255 255 / .5);
+      box-shadow: inset 0 1px 0 rgb(255 255 255 / .45), var(--shadow);
+      backdrop-filter: blur(16px) saturate(1.4);
+    }
+    [data-theme="dark"][data-tile-style="glass"] .tile {
+      background-color: color-mix(in srgb, var(--surface) 55%, transparent);
+      border-color: rgb(255 255 255 / .09);
+      box-shadow: inset 0 1px 0 rgb(255 255 255 / .06), var(--shadow);
+    }
+
+    /* Bij het openen verschijnen de tegels kort na elkaar. */
+    .grid.is-entering > .tile { animation: tile-in .4s cubic-bezier(.2, .7, .3, 1) backwards; animation-delay: calc(var(--i, 0) * 45ms); }
+    @keyframes tile-in {
+      from { opacity: 0; transform: translateY(10px) scale(.98); }
+    }
+
     /* Halve tegel: icoon en titel naast elkaar. */
     .tile--half .tile-main { flex-direction: row; justify-content: flex-start; gap: 10px; padding: 8px 12px; text-align: left; }
     .tile--half .tile-icon { width: 34px; height: 34px; font-size: 18px; }
     .tile--half .tile-icon .icon { width: 18px; height: 18px; }
     .tile--half .tile-icon > .favicon { width: 20px; height: 20px; border-radius: 4px; }
     .tile--half .tile-icon--letter { font-size: 16px; }
-    .tile--half .tile-title { -webkit-line-clamp: 1; font-size: .88rem; }
+    .tile--half .tile-title { -webkit-line-clamp: 1; font-size: calc(var(--fs) * .88); }
     .tile--half .tile-hint { display: none; }
     .tile--half .tile-action { top: 50%; width: 26px; height: 26px; transform: translateY(-50%); }
     .tile--half:not(.is-invalid):hover { transform: translateY(-1px); }
@@ -692,6 +786,9 @@
     }
     .settings-nav-item {
       flex: none;
+      display: flex;
+      align-items: center;
+      gap: 10px;
       padding: 7px 12px;
       border: 0;
       border-radius: 8px;
@@ -700,6 +797,7 @@
       text-align: left;
       cursor: pointer;
     }
+    .settings-nav-item .icon { width: 16px; height: 16px; }
     .settings-nav-item:hover { background: var(--surface-hover); color: var(--text); }
     .settings-nav-item[aria-current="page"] {
       background: var(--accent-soft);
@@ -707,14 +805,24 @@
       font-weight: 600;
     }
 
-    .settings-panel { display: grid; align-content: start; gap: 8px; padding: 18px 28px; overflow: auto; }
+    .settings-panel {
+      display: grid;
+      align-content: start;
+      gap: 8px;
+      padding: 18px 28px 28px;
+      overflow: auto;
+      background: color-mix(in srgb, var(--bg) 55%, var(--surface));
+    }
     .settings-panel h3 { font-size: .95rem; font-weight: 650; }
+    /* Elke groep instellingen in een eigen kaartje. */
     .settings-group {
       display: grid;
       gap: 6px;
-      margin-top: 12px;
-      padding-top: 16px;
-      border-top: 1px solid var(--border);
+      margin-top: 8px;
+      padding: 16px 18px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface);
     }
     .settings-group h4 { font-size: .85rem; font-weight: 600; }
     .settings-group p { max-width: 70ch; color: var(--text-muted); font-size: .78rem; }
@@ -770,6 +878,22 @@
       cursor: pointer;
     }
     .swatch[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--text); }
+
+    .gradient-swatches { display: flex; flex-wrap: wrap; gap: 10px; }
+    .gradient-swatch {
+      display: grid;
+      place-items: end center;
+      width: 84px;
+      height: 56px;
+      padding: 0 0 4px;
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      background: var(--page-gradient);
+      color: var(--text-muted);
+      font-size: .72rem;
+      cursor: pointer;
+    }
+    .gradient-swatch[aria-pressed="true"] { border-color: var(--accent); color: var(--text); font-weight: 600; }
 
     .image-preview {
       max-width: 160px;
@@ -836,7 +960,7 @@
       padding: 6px 6px 6px 10px;
       border: 1px solid var(--border);
       border-radius: 10px;
-      background: var(--bg);
+      background: var(--surface);
     }
     .item-icon { flex: none; width: 28px; color: var(--text-muted); font-size: .95rem; font-weight: 600; text-align: center; }
     .item-main {
@@ -920,7 +1044,7 @@
 
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { transition: none !important; animation: none !important; }
-      .tile--link:hover { transform: none; }
+      .tile--link:hover, .tile--half:not(.is-invalid):hover { transform: none; }
     }
   </style>
 </head>
@@ -1029,6 +1153,7 @@
     ];
     const FAVICON_MAX_AGE_MS = 7 * 24 * 3600_000;      // via de Worker gevonden favicon
     const FAVICON_MISSING_MAX_AGE_MS = 24 * 3600_000;  // "deze site heeft geen favicon"
+    const FAVICON_REFRESH_MS = 6 * 3600_000;           // open tabblad: favicons zo vaak opnieuw bekijken
     // Domeinen waarvan het hoofddomein uit drie delen bestaat (co.uk e.d.).
     const SECOND_LEVEL_SUFFIXES = ['co.uk', 'org.uk', 'ac.uk', 'gov.uk', 'com.au', 'co.nz', 'co.za', 'com.br', 'co.jp'];
     const WEATHER_REFRESH_MS = 30 * 60_000;
@@ -1089,7 +1214,16 @@
 
     const GRID_MAX = 8;               // maximaal aantal kolommen en rijen
     const THEMES = ['light', 'dark', 'system'];
-    const TILE_STYLES = ['rounded', 'square'];
+    const TILE_STYLES = ['rounded', 'square', 'glass'];
+    // Maximale tegelhoogte; "auto" groeit mee met grote schermen.
+    const TILE_SIZES = {
+      auto: ['Automatisch', 'clamp(210px, 14vw, 320px)'],
+      compact: ['Compact', '170px'],
+      normal: ['Normaal', '210px'],
+      large: ['Groot', '260px'],
+      xlarge: ['Extra groot', '320px']
+    };
+    const TILE_RATIOS = { square: ['Vierkant', 1], wide: ['Iets breder (5 : 4)', 1.25], wider: ['Breed (3 : 2)', 1.5] };
     const LINK_PROTOCOLS = ['http:', 'https:', 'mailto:'];
     const IMAGE_PROTOCOLS = ['http:', 'https:', 'file:', 'data:'];
 
@@ -1106,9 +1240,11 @@
         accentColor: '#2563eb',
         gridColumns: 4,                            // 2–8
         gridRows: 4,                               // 2–8
-        tileStyle: 'rounded',                      // 'rounded' | 'square'
+        tileStyle: 'rounded',                      // 'rounded' | 'square' | 'glass'
+        tileSize: 'auto',                          // zie TILE_SIZES
+        tileRatio: 'square',                       // zie TILE_RATIOS
         favicons: true,                            // favicons bij links, via Google
-        background: { type: 'none', color: '#dfe7f2', image: '' }   // type: 'none' | 'color' | 'image'
+        background: { type: 'gradient', color: '#dfe7f2', image: '', gradient: 'accent' }   // type: zie BACKGROUND_TYPES
       },
       clock: { enabled: true, showSeconds: false, showDate: true },
       weather: {
@@ -1175,7 +1311,8 @@
 
     const ACCENT_PRESETS = ['#2563eb', '#7c3aed', '#db2777', '#dc2626', '#ea580c', '#16a34a', '#0d9488', '#475569'];
     const LOGO_SOURCES = [['none', 'Geen logo'], ['url', 'Adres of pad'], ['upload', 'Afbeelding uploaden']];
-    const BACKGROUND_TYPES = [['none', 'Standaard'], ['color', 'Eigen kleur'], ['image', 'Afbeelding']];
+    const BACKGROUND_TYPES = [['none', 'Effen'], ['gradient', 'Verloop'], ['color', 'Eigen kleur'], ['image', 'Afbeelding']];
+    const GRADIENTS = { accent: 'Accent', ochtend: 'Ochtend', oceaan: 'Oceaan', bos: 'Bos', schemer: 'Schemer', grafiet: 'Grafiet' };
 
     const ICON_PATHS = {
       copy: 'M11 9h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2zM5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1',
@@ -1335,13 +1472,13 @@
     };
 
     const SETTINGS_SECTIONS = [
-      { id: 'general', label: 'Algemeen', description: 'Titel, welkomsttekst en logo.' },
-      { id: 'appearance', label: 'Uiterlijk', description: 'Thema, accentkleur, achtergrond, grootte van het grid en tegelstijl.' },
-      { id: 'tiles', label: 'Tegels', description: 'Tegels toevoegen, bewerken, verwijderen en ordenen.' },
-      { id: 'quickLinks', label: 'Snelle links', description: 'De balk met snelle links onder het grid.' },
-      { id: 'weather', label: 'Weer & klok', description: 'Plaats en eenheid voor het weer, en de weergave van de klok.' },
-      { id: 'services', label: 'Koppelingen', description: 'Adres en sleutel van de Cloudflare Worker voor RSS en agenda.' },
-      { id: 'data', label: 'Gegevens', description: 'Exporteren, importeren en terugzetten naar de standaardinstellingen.' }
+      { id: 'general', icon: 'home', label: 'Algemeen', description: 'Titel, welkomsttekst en logo.' },
+      { id: 'appearance', icon: 'layout', label: 'Uiterlijk', description: 'Thema, accentkleur, achtergrond, grootte van het grid en tegelstijl.' },
+      { id: 'tiles', icon: 'grid', label: 'Tegels', description: 'Tegels toevoegen, bewerken, verwijderen en ordenen.' },
+      { id: 'quickLinks', icon: 'link', label: 'Snelle links', description: 'De balk met snelle links onder het grid.' },
+      { id: 'weather', icon: 'sun', label: 'Weer & klok', description: 'Plaats en eenheid voor het weer, en de weergave van de klok.' },
+      { id: 'services', icon: 'cloud', label: 'Koppelingen', description: 'Adres en sleutel van de Cloudflare Worker voor RSS en agenda.' },
+      { id: 'data', icon: 'database', label: 'Gegevens', description: 'Exporteren, importeren en terugzetten naar de standaardinstellingen.' }
     ];
 
     const TIME_FORMAT = new Intl.DateTimeFormat('nl-NL', { hour: '2-digit', minute: '2-digit' });
@@ -1369,7 +1506,13 @@
     const feedRequests = new Map();   // feed-URL → lopende ophaalactie, zodat een feed niet dubbel wordt opgehaald
     const calendarState = new Map();  // agenda-URL → { fetchedAt, name, occurrences, error }
     const calendarRequests = new Map();
-    const faviconRequests = new Map(); // host → Promise<object-URL | null>
+    const faviconRequests = new Map(); // host → Promise<{ url } | { missing } | null>
+    let faviconUrls = [];              // object-URL's van favicons, om ze bij verversen vrij te geven
+    // Afbeeldingen (logo, achtergrond, tegelachtergronden) staan in IndexedDB; de config bevat "asset:<id>".
+    const ASSET_PREFIX = 'asset:';
+    const assetCache = new Map();      // id → data-URL
+    let assetsReady = false;           // IndexedDB werkt: nieuwe afbeeldingen gaan daarheen
+    let draftBase = null;              // config (als JSON) op het moment dat de instellingen opengingen
     const zoneFormatters = new Map(); // tijdzone → Intl.DateTimeFormat, voor het omrekenen naar UTC
     let activeSettingsSection = SETTINGS_SECTIONS[0].id;
     const timers = {};
@@ -1413,6 +1556,7 @@
     }
 
     function saveData() {
+      storeImages(config);
       try {
         localStorage.setItem(STORAGE_KEYS.config, JSON.stringify(config));
       } catch (error) {
@@ -1444,6 +1588,80 @@
       }
       if (status === 'corrupt') toast('De opgeslagen instellingen waren beschadigd; de standaardinstellingen zijn geladen.');
     }
+
+    // De plekken in de config waar een afbeelding kan staan: [object, sleutel].
+    function imageSlots(data) {
+      return [[data.general.logo, 'dataUrl'], [data.appearance.background, 'image'], ...data.tiles.map(tile => [tile, 'background'])];
+    }
+
+    function isAssetRef(value) {
+      return typeof value === 'string' && /^asset:[a-z0-9]{1,16}$/.test(value);
+    }
+
+    function isImageValue(value) {
+      return isImageDataUrl(value) || isAssetRef(value);
+    }
+
+    // Afbeelding voor op de pagina: een data-URL, of de afbeelding uit IndexedDB (null zolang die nog niet geladen is).
+    function resolveImage(value) {
+      if (isImageDataUrl(value)) return value;
+      return isAssetRef(value) ? assetCache.get(value.slice(ASSET_PREFIX.length)) ?? null : null;
+    }
+
+    // Nieuwe afbeeldingen (data-URL's) gaan naar IndexedDB; in de config (en dus localStorage, max. ± 5 MB) komt
+    // alleen een verwijzing. Zonder IndexedDB blijven ze in de config staan.
+    function storeImages(data) {
+      if (!assetsReady) return;
+      const writes = [];
+      for (const [object, key] of imageSlots(data)) {
+        if (!isImageDataUrl(object[key])) continue;
+        const id = hashString(object[key]);
+        assetCache.set(id, object[key]);
+        writes.push(idbPut('assets', id, object[key]));
+        object[key] = ASSET_PREFIX + id;
+      }
+      Promise.all(writes)
+        .then(() => schedulePruneAssets())
+        .catch(() => toast('Een afbeelding kon niet worden bewaard.'));
+    }
+
+    // Laadt de afbeeldingen waarnaar de config verwijst. Geeft true als er iets nieuws geladen is.
+    async function loadImages(data) {
+      const ids = [...new Set(imageSlots(data).map(([object, key]) => object[key]).filter(isAssetRef))]
+        .map(ref => ref.slice(ASSET_PREFIX.length))
+        .filter(id => !assetCache.has(id));
+      let loaded = false;
+      for (const id of ids) {
+        const value = await idbGet('assets', id).catch(() => null);
+        if (isImageDataUrl(value)) {
+          assetCache.set(id, value);
+          loaded = true;
+        }
+      }
+      return loaded;
+    }
+
+    // Kopie van de config met de afbeeldingen zelf erin (voor de export).
+    function withInlineImages(data) {
+      const copy = structuredClone(data);
+      for (const [object, key] of imageSlots(copy)) {
+        if (isAssetRef(object[key])) object[key] = resolveImage(object[key]) ?? '';
+      }
+      return copy;
+    }
+
+    // Afbeeldingen waar de config niet meer naar verwijst, opruimen.
+    const schedulePruneAssets = debounce(async () => {
+      const used = new Set(imageSlots(config).map(([object, key]) => object[key]).filter(isAssetRef)
+        .map(ref => ref.slice(ASSET_PREFIX.length)));
+      await idbRequest('assets', 'readwrite', store => {
+        const request = store.getAllKeys();
+        request.onsuccess = () => {
+          for (const key of request.result) if (!used.has(key)) store.delete(key);
+        };
+        return request;
+      }).catch(() => {});
+    }, 2000);
 
     function applyConfig(data) {
       config = data;
@@ -1517,8 +1735,12 @@
       appearance.gridRows = clamp(Math.round(appearance.gridRows), 2, GRID_MAX);
       if (!THEMES.includes(appearance.theme)) appearance.theme = DEFAULT_CONFIG.appearance.theme;
       if (!TILE_STYLES.includes(appearance.tileStyle)) appearance.tileStyle = DEFAULT_CONFIG.appearance.tileStyle;
+      if (!TILE_SIZES[appearance.tileSize]) appearance.tileSize = DEFAULT_CONFIG.appearance.tileSize;
+      if (!TILE_RATIOS[appearance.tileRatio]) appearance.tileRatio = DEFAULT_CONFIG.appearance.tileRatio;
       if (!isHexColor(appearance.accentColor)) appearance.accentColor = DEFAULT_CONFIG.appearance.accentColor;
       if (!isHexColor(appearance.background.color)) appearance.background.color = DEFAULT_CONFIG.appearance.background.color;
+      if (!BACKGROUND_TYPES.some(([type]) => type === appearance.background.type)) appearance.background.type = 'none';
+      if (!GRADIENTS[appearance.background.gradient]) appearance.background.gradient = DEFAULT_CONFIG.appearance.background.gradient;
       return data;
     }
 
@@ -1537,7 +1759,7 @@
         normalized.height = clamp(Math.round(normalized.height) || 2, 2, 4);
       }
       if (normalized.type === 'link' && !LINK_TILE_SIZES[normalized.size]) normalized.size = 'normal';
-      if (!isImageDataUrl(normalized.background)) normalized.background = '';
+      if (!isImageValue(normalized.background)) normalized.background = '';
       normalized.backgroundDim = clamp(Math.round(normalized.backgroundDim) || 80, 40, 95);
       const position = normalizePosition(tile.position);
       if (position) normalized.position = position;
@@ -1572,8 +1794,9 @@
       return data;
     }
 
-    function exportConfig() {
-      const payload = { app: EXPORT_APP_ID, exportedAt: new Date().toISOString(), config };
+    async function exportConfig() {
+      await loadImages(config);
+      const payload = { app: EXPORT_APP_ID, exportedAt: new Date().toISOString(), config: withInlineImages(config) };
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       el('a', { href: url, download: `dashboard-instellingen-${dateStamp(new Date())}.json` }).click();
@@ -1627,12 +1850,16 @@
     function applyAppearance(appearance = config.appearance) {
       const root = document.documentElement;
       const { type, color, image } = appearance.background;
-      const background = type === 'image' && isImageDataUrl(image) ? 'image' : type === 'color' ? 'color' : 'none';
+      const imageUrl = type === 'image' ? resolveImage(image) : null;
+      const background = imageUrl ? 'image' : type === 'color' || type === 'gradient' ? type : 'none';
+      root.dataset.gradient = appearance.background.gradient;
       root.style.setProperty('--accent', appearance.accentColor);
       root.style.setProperty('--page-bg', background === 'color' ? color : '');
-      root.style.setProperty('--page-bg-image', background === 'image' ? `url("${image}")` : '');
+      root.style.setProperty('--page-bg-image', imageUrl ? `url("${imageUrl}")` : '');
       root.dataset.background = background;
       root.dataset.tileStyle = appearance.tileStyle;
+      root.style.setProperty('--cfg-tile-max', TILE_SIZES[appearance.tileSize][1]);
+      root.style.setProperty('--cfg-ratio', TILE_RATIOS[appearance.tileRatio][1]);
       applyTheme(appearance.theme);
     }
 
@@ -1667,7 +1894,7 @@
 
     function resolveLogo(logo) {
       if (logo.source === 'url') return safeUrl(logo.url, IMAGE_PROTOCOLS) ?? pathToFileUrl(logo.url);
-      if (logo.source === 'upload' && isImageDataUrl(logo.dataUrl)) return logo.dataUrl;
+      if (logo.source === 'upload') return resolveImage(logo.dataUrl);
       return null;
     }
 
@@ -1704,7 +1931,7 @@
 
       // In de volgorde waarin ze op het scherm staan, zodat Tab en een smal venster dezelfde volgorde volgen.
       const ordered = [...config.tiles].sort((a, b) => comparePlaces(layout.places.get(a.id), layout.places.get(b.id)));
-      const tiles = ordered.map(tile => buildTile(tile, layout.places.get(tile.id))).filter(Boolean);
+      const tiles = ordered.map((tile, index) => buildTile(tile, layout.places.get(tile.id), index)).filter(Boolean);
       if (!tiles.length) {
         tiles.push(el('p', { class: 'grid-empty' }, 'Nog geen tegels. Voeg tegels toe via ⚙ Instellingen.'));
       }
@@ -1773,7 +2000,7 @@
       return { places, bottom };
     }
 
-    function buildTile(tile, place) {
+    function buildTile(tile, place, index = 0) {
       const builder = TILE_BUILDERS[tile.type];
       if (!builder) return null;
       const node = builder(tile);
@@ -1784,11 +2011,13 @@
       node.style.setProperty('--span-cols', place.cols);
       node.style.setProperty('--span-cols-narrow', Math.min(place.cols, 2));
       node.style.setProperty('--span-rows', place.rows);
+      node.style.setProperty('--i', index); // volgorde van de inlaadanimatie
       if (tile.type === 'link' && tile.size === 'half') node.classList.add('tile--half');
       // Achtergrondafbeelding, gedimd met een overlay in de kleur van de tegel.
-      if (isImageDataUrl(tile.background)) {
+      const background = resolveImage(tile.background);
+      if (background) {
         node.classList.add('has-background');
-        node.style.setProperty('--tile-background', `url("${tile.background}")`);
+        node.style.setProperty('--tile-background', `url("${background}")`);
         node.style.setProperty('--tile-dim', `${tile.backgroundDim}%`);
       }
       preventInnerDrag(node);
@@ -1881,14 +2110,14 @@
 
     // Inhoud van een RSS-tegel uit feedState; wordt opnieuw opgebouwd zodra een feed is opgehaald.
     function buildFeedContent(tile) {
-      if (!tile.feedUrl) return buildTileState('Voeg een feed-adres toe via ⚙ Instellingen → Tegels.');
-      if (!config.services.workerUrl) return buildTileState('Koppel eerst de Worker via ⚙ Instellingen → Koppelingen.');
+      if (!tile.feedUrl) return buildTileState('Voeg een feed-adres toe via ⚙ Instellingen → Tegels.', { action: OPEN_SETTINGS('tiles', tile.id) });
+      if (!config.services.workerUrl) return buildTileState('Koppel eerst de Worker via ⚙ Instellingen → Koppelingen.', { action: OPEN_SETTINGS('services') });
 
       const state = feedState.get(tile.feedUrl);
       if (!state?.feed) {
         return state?.error
-          ? buildTileState(`De feed kon niet worden geladen: ${state.error}`, true)
-          : buildTileState('Laden…');
+          ? buildTileState(`De feed kon niet worden geladen: ${state.error}`, { error: true, action: RETRY('feed') })
+          : buildSkeleton(tile.maxItems);
       }
 
       const items = state.feed.items.slice(0, tile.maxItems);
@@ -1907,10 +2136,7 @@
             ? el('a', { class: 'feed-item', ...linkAttributes(href) }, content)
             : el('span', { class: 'feed-item' }, content));
         })),
-        state.error
-          ? el('p', { class: 'feed-stale', title: state.error },
-              `Bijwerken mislukt; dit is de stand van ${TIME_FORMAT.format(new Date(state.fetchedAt))}.`)
-          : null
+        state.error ? buildStaleNote(state, 'feed') : null
       ];
     }
 
@@ -1922,7 +2148,8 @@
         if (body) preventInnerDrag(body);
         // Het favicon van de site is pas bekend als de feed geladen is.
         const heading = body?.parentElement.querySelector('.tile-heading');
-        if (heading && heading.dataset.site !== feedSiteUrl(tile)) heading.replaceWith(buildTileHeading(tile));
+        const site = tile.icon === 'favicon' ? feedSiteUrl(tile) : null;
+        if (heading && (heading.dataset.site ?? null) !== site) heading.replaceWith(buildTileHeading(tile));
       }
     }
 
@@ -1935,37 +2162,39 @@
 
     // Afspraken per dag, van vandaag tot daysAhead dagen vooruit.
     function buildCalendarContent(tile, now = new Date()) {
-      if (!tile.icsUrl) return buildTileState('Voeg het iCal-adres van je Google Agenda toe via ⚙ Instellingen → Tegels.');
-      if (!config.services.workerUrl) return buildTileState('Koppel eerst de Worker via ⚙ Instellingen → Koppelingen.');
+      if (!tile.icsUrl) return buildTileState('Voeg het iCal-adres van je Google Agenda toe via ⚙ Instellingen → Tegels.', { action: OPEN_SETTINGS('tiles', tile.id) });
+      if (!config.services.workerUrl) return buildTileState('Koppel eerst de Worker via ⚙ Instellingen → Koppelingen.', { action: OPEN_SETTINGS('services') });
 
       const state = calendarState.get(tile.icsUrl);
       if (!state?.occurrences) {
         return state?.error
-          ? buildTileState(`De agenda kon niet worden geladen: ${state.error}`, true)
-          : buildTileState('Laden…');
+          ? buildTileState(`De agenda kon niet worden geladen: ${state.error}`, { error: true, action: RETRY('calendar') })
+          : buildSkeleton(10);
       }
 
       const days = groupByDay(state.occurrences, tile.daysAhead, now);
-      const stale = state.error
-        ? el('p', { class: 'feed-stale', title: state.error },
-            `Bijwerken mislukt; dit is de stand van ${TIME_FORMAT.format(new Date(state.fetchedAt))}.`)
-        : null;
+      const stale = state.error ? buildStaleNote(state, 'calendar') : null;
       if (!days.length) return [buildTileState(`Geen afspraken in de komende ${tile.daysAhead} dagen.`), stale];
 
       const today = localDayNumber(now);
+      // De eerstvolgende afspraak van vandaag krijgt "over … min".
+      const next = days[0]?.day === today
+        ? days[0].items.find(item => !item.allDay && new Date(item.start) > now)
+        : null;
       return [
         el('div', { class: 'agenda' }, days.map(day => el('section', { class: 'agenda-day' },
           el('h3', { class: 'agenda-date', title: AGENDA_FULL_DAY_FORMAT.format(dayStart(day.day)) },
             day.day === today ? 'Vandaag' : day.day === today + 1 ? 'Morgen' : capitalize(AGENDA_DAY_FORMAT.format(dayStart(day.day)))),
-          el('ul', { class: 'agenda-list' }, day.items.map(item => buildAgendaItem(item, day.day, now)))))),
+          el('ul', { class: 'agenda-list' }, day.items.map(item => buildAgendaItem(item, day.day, now, item === next && day.day === today)))))),
         stale
       ];
     }
 
-    function buildAgendaItem(item, day, now) {
+    function buildAgendaItem(item, day, now, isNext = false) {
       let time;
       let past = false;
       let current = false;
+      let badge = null;
       if (item.allDay) {
         time = 'Hele dag';
       } else {
@@ -1978,12 +2207,25 @@
           : endsToday ? `tot ${TIME_FORMAT.format(end)}` : 'Hele dag';
         past = end <= now && end > start;
         current = start <= now && now < end;
+        if (current && end - now < 12 * 3600_000) badge = `nog ${formatDuration(end - now)}`;
+        else if (isNext && start - now < 12 * 3600_000) badge = `over ${formatDuration(start - now)}`;
       }
-      return el('li', { class: `agenda-item${past ? ' is-past' : ''}${current ? ' is-now' : ''}` },
+      return el('li', { class: `agenda-item${past ? ' is-past' : ''}${current ? ' is-now' : ''}${badge && !current ? ' is-next' : ''}` },
         el('span', { class: 'agenda-time' }, time),
         el('span', { class: 'agenda-text' },
-          el('span', { class: 'agenda-title' }, item.title),
+          el('span', { class: 'agenda-head' },
+            el('span', { class: 'agenda-title' }, item.title),
+            badge ? el('span', { class: 'agenda-badge' }, badge) : null),
           item.location ? el('span', { class: 'agenda-location' }, item.location) : null));
+    }
+
+    // 25 min, 1 u, 1 u 20 min (naar boven afgerond op hele minuten)
+    function formatDuration(ms) {
+      const minutes = Math.max(1, Math.ceil(ms / 60_000));
+      const hours = Math.floor(minutes / 60);
+      const rest = minutes % 60;
+      if (!hours) return `${minutes} min`;
+      return rest ? `${hours} u ${rest} min` : `${hours} u`;
     }
 
     // Verdeelt afspraken over dagen. Meerdaagse afspraken staan op elke dag; lopende afspraken van gisteren op vandaag.
@@ -2037,8 +2279,11 @@
       return null;
     }
 
+    // Pas als de feed geladen is, is de site bekend (feeds.nos.nl → nos.nl); tot dan het RSS-icoon.
     function feedSiteUrl(tile) {
-      return safeUrl(feedState.get(tile.feedUrl)?.feed?.link, ['http:', 'https:']) ?? safeUrl(tile.feedUrl, ['http:', 'https:']);
+      const feed = feedState.get(tile.feedUrl)?.feed;
+      if (!feed) return null;
+      return safeUrl(feed.link, ['http:', 'https:']) ?? safeUrl(tile.feedUrl, ['http:', 'https:']);
     }
 
     function buildTileHeading(tile) {
@@ -2059,8 +2304,31 @@
       return null;
     }
 
-    function buildTileState(message, isError = false) {
-      return el('p', { class: isError ? 'tile-state is-error' : 'tile-state' }, message);
+    // Melding in een tegel, eventueel met een knop: opnieuw proberen of de juiste instellingen openen.
+    function buildTileState(message, { error = false, action = null } = {}) {
+      return el('div', { class: error ? 'tile-state is-error' : 'tile-state' },
+        el('p', {}, message),
+        action ? el('button', { class: 'btn btn--small', type: 'button', ...action.attributes }, action.icon ? icon(action.icon) : null, action.label) : null);
+    }
+
+    const RETRY = kind => ({ label: 'Opnieuw proberen', icon: 'refresh', attributes: { 'data-action': `retry-${kind}` } });
+    const OPEN_SETTINGS = (section, tileId = null) => ({
+      label: 'Instellingen openen',
+      icon: 'settings',
+      attributes: { 'data-action': 'open-settings', 'data-settings-section': section, 'data-tile': tileId }
+    });
+
+    // Grijze regels die zacht pulseren zolang de inhoud laadt.
+    function buildSkeleton(lines = 6) {
+      const widths = [92, 76, 84, 63, 88, 70, 80, 58];
+      return el('div', { class: 'skeleton', role: 'status', 'aria-label': 'Laden…' },
+        Array.from({ length: lines }, (_, index) => el('span', { class: 'skeleton-line', style: { '--w': `${widths[index % widths.length]}%` } })));
+    }
+
+    function buildStaleNote(state, kind) {
+      return el('p', { class: 'feed-stale', title: state.error },
+        `Bijwerken mislukt; dit is de stand van ${TIME_FORMAT.format(new Date(state.fetchedAt))}. `,
+        el('button', { class: 'link-btn', type: 'button', 'data-action': `retry-${kind}` }, 'Opnieuw'));
     }
 
     // Links openen altijd in een nieuw tabblad. Office- en mailto-links starten een programma en krijgen geen (leeg) tabblad.
@@ -2120,7 +2388,7 @@
           const key = `favicon2:${host}`; // 2: opnieuw ophalen na Worker 1.2.0 (betere volgorde bij doorverwijzingen)
           const cached = await idbGet('cache', key).catch(() => null);
           const maxAge = cached?.blob ? FAVICON_MAX_AGE_MS : FAVICON_MISSING_MAX_AGE_MS;
-          const fromCache = () => (cached?.blob ? { url: URL.createObjectURL(cached.blob) } : null);
+          const fromCache = () => (cached?.blob ? { url: objectUrl(cached.blob) } : null);
           if (cached && Date.now() - cached.fetchedAt < maxAge) return cached.blob ? fromCache() : { missing: true };
           try {
             const response = await fetch(`${workerEndpoint(config.services, '/favicon')}?url=${encodeURIComponent(`https://${host}`)}`, {
@@ -2135,13 +2403,30 @@
             // Een oudere Worker zonder /favicon geeft 404: dan gewoon de bronnen in de browser gebruiken.
             if (!blob?.type.startsWith('image/')) return fromCache();
             idbPut('cache', key, { fetchedAt: Date.now(), blob }).catch(() => {});
-            return { url: URL.createObjectURL(blob) };
+            return { url: objectUrl(blob) };
           } catch {
             return fromCache();
           }
         })());
       }
       return faviconRequests.get(host);
+    }
+
+    function objectUrl(blob) {
+      const url = URL.createObjectURL(blob);
+      faviconUrls.push(url);
+      return url;
+    }
+
+    // Een tabblad dat dagen openstaat, haalt de favicons af en toe opnieuw op (de cache bepaalt of dat echt nodig is).
+    function refreshFavicons() {
+      if (draft || $('#tileGrid').classList.contains('is-sorting')) return;
+      const old = faviconUrls;
+      faviconUrls = [];
+      faviconRequests.clear();
+      renderGrid();
+      renderQuickLinks();
+      setTimeout(() => old.forEach(url => URL.revokeObjectURL(url)), 10_000);
     }
 
     // vechtdalwonen.operations.eu.dynamics.com → dynamics.com, www.bbc.co.uk → bbc.co.uk
@@ -2199,10 +2484,15 @@
           if (!data) return;
           config = data;
           renderDashboard();
+          if (draft) {
+            applyAppearance(draft.appearance); // het live voorbeeld van de open instellingen blijft staan
+            toast('De instellingen zijn in een ander tabblad gewijzigd.');
+          }
           startClock();
           updateWeather();
           updateFeeds();
           updateCalendars();
+          loadImages(config).then(loaded => { if (loaded) renderDashboard(); });
         } catch {
           // Onleesbare waarde: negeren, de eigen config blijft gelden.
         }
@@ -2306,11 +2596,11 @@
       const style = getComputedStyle(grid);
       const cell = parseFloat(style.gridTemplateColumns);
       const gap = parseFloat(style.columnGap) || 0;
-      const half = (cell - gap) / 2;
+      const half = parseFloat(style.gridAutoRows); // rijhoogte: een halve tegel
       const rect = grid.getBoundingClientRect();
       const width = columns * cell + (columns - 1) * gap;
       const left = rect.left + (rect.width - width) / 2;
-      const height = config.appearance.gridRows * (cell + gap);
+      const height = config.appearance.gridRows * 2 * (half + gap);
       if (x < left - gap || x > left + width + gap || y < rect.top - gap || y > rect.top + Math.max(height, rect.height) + gap) return null;
       const col = Math.round((x - drag.offsetX - left) / (cell + gap)) + 1;
       const row = Math.round((y - drag.offsetY - rect.top) / (half + gap)) + 1;
@@ -2376,6 +2666,12 @@
       const button = event.target.closest('button[data-action]');
       if (!button) return;
       if (button.dataset.action === 'copy-path') copyText(button.dataset.path);
+      if (button.dataset.action === 'retry-feed') updateFeeds({ force: true });
+      if (button.dataset.action === 'retry-calendar') updateCalendars({ force: true });
+      if (button.dataset.action === 'open-settings') {
+        openSettings(button.dataset.settingsSection);
+        if (button.dataset.tile) openTileEditor(button.dataset.tile);
+      }
       if (button.dataset.action === 'pick-session-file') {
         pendingSessionTileId = button.closest('[data-tile-id]').dataset.tileId;
         $('#sessionFileInput').click();
@@ -3111,6 +3407,11 @@
       'move-item': moveItem,
       'reset-layout': resetLayout,
       'remove-item': removeItem,
+      'set-gradient': button => {
+        draft.appearance.background.gradient = button.dataset.gradient;
+        applyAppearance(draft.appearance);
+        rerenderSettings();
+      },
       'set-accent': button => {
         draft.appearance.accentColor = button.dataset.color;
         applyAppearance(draft.appearance);
@@ -3144,6 +3445,7 @@
 
     function openSettings(sectionId = activeSettingsSection) {
       draft = structuredClone(config);
+      draftBase = JSON.stringify(config);
       editingTileId = null;
       renderSettingsNav();
       renderSettingsSection(sectionId);
@@ -3153,6 +3455,7 @@
 
     function closeSettings() {
       draft = null;
+      draftBase = null;
       editingTileId = null;
       $('#settingsModal').close();
     }
@@ -3175,6 +3478,10 @@
         toast(problem.message);
         return;
       }
+      // Intussen in een ander tabblad gewijzigd? Dan niet ongemerkt overschrijven.
+      if (JSON.stringify(config) !== draftBase &&
+          !confirm('De instellingen zijn intussen in een ander tabblad gewijzigd. Jouw wijzigingen toch opslaan? ' +
+            'De wijzigingen uit het andere tabblad gaan dan verloren.')) return;
       applyConfig(normalizeConfig(draft));
       closeSettings();
       toast('De instellingen zijn opgeslagen.');
@@ -3226,7 +3533,7 @@
 
     function renderSettingsNav() {
       $('#settingsNav').replaceChildren(...SETTINGS_SECTIONS.map(section =>
-        el('button', { class: 'settings-nav-item', type: 'button', 'data-section': section.id }, section.label)));
+        el('button', { class: 'settings-nav-item', type: 'button', 'data-section': section.id }, icon(section.icon), section.label)));
     }
 
     function renderSettingsSection(sectionId) {
@@ -3402,10 +3709,11 @@
     }
 
     function imageField(kind, current, path) {
-      const hasImage = isImageDataUrl(current);
+      const hasImage = isImageValue(current);
+      const src = resolveImage(current);
       return field('Afbeelding',
         el('div', { class: 'inline' },
-          hasImage ? el('img', { class: 'image-preview', src: current, alt: '' }) : null,
+          src ? el('img', { class: 'image-preview', src, alt: '' }) : null,
           el('input', { type: 'file', accept: 'image/*', 'data-image': kind, 'data-image-path': path, 'aria-label': 'Afbeelding kiezen' }),
           hasImage ? el('button', { class: 'btn', type: 'button', 'data-action': 'clear-image', 'data-path': path }, 'Verwijderen') : null),
         `Wordt verkleind tot maximaal ${IMAGE_SETTINGS[kind].maxSize} pixels en in je instellingen bewaard.`);
@@ -3418,7 +3726,7 @@
             el('input', { type: 'checkbox', 'data-color-toggle': `${base}.color`, checked: Boolean(tile.color) }),
             el('span', {}, 'Eigen kleur')),
           tile.color ? inputFor(`${base}.color`, { type: 'color', 'aria-label': 'Tegelkleur' }) : null),
-        'Zonder eigen kleur gebruikt de tegel de accentkleur.');
+        'Zonder eigen kleur is het icoon grijs.');
     }
 
     /* ---------- Secties ---------- */
@@ -3458,10 +3766,20 @@
               'aria-pressed': String(color === appearance.accentColor)
             })),
             inputFor('appearance.accentColor', { type: 'color', 'aria-label': 'Eigen accentkleur' })))),
-        buildSettingsGroup('Achtergrond', 'Geldt voor het lichte en het donkere thema.',
+        buildSettingsGroup('Achtergrond', 'Geldt voor het lichte en het donkere thema. Een verloop of foto combineert mooi met de tegelstijl Glas.',
           field('Achtergrond', selectFor('appearance.background.type', BACKGROUND_TYPES, { 'data-rerender': true })),
           appearance.background.type === 'color'
             ? field('Kleur', inputFor('appearance.background.color', { type: 'color' }))
+            : null,
+          appearance.background.type === 'gradient'
+            ? field('Verloop', el('div', { class: 'gradient-swatches', role: 'group', 'aria-label': 'Verloop kiezen' },
+                Object.entries(GRADIENTS).map(([name, label]) => el('button', {
+                  class: 'gradient-swatch',
+                  type: 'button',
+                  'data-action': 'set-gradient',
+                  'data-gradient': name,
+                  'aria-pressed': String(appearance.background.gradient === name)
+                }, label))), 'Zachte kleuren die passen bij het lichte en het donkere thema. "Accent" volgt je accentkleur.')
             : null,
           appearance.background.type === 'image'
             ? imageField('background', appearance.background.image, 'appearance.background.image')
@@ -3471,7 +3789,13 @@
           el('div', { class: 'inline' },
             field('Kolommen', selectFor('appearance.gridColumns', gridOptions, { 'data-type': 'number', 'data-rerender': true })),
             field('Rijen', selectFor('appearance.gridRows', gridOptions, { 'data-type': 'number', 'data-rerender': true }))),
-          field('Tegelstijl', selectFor('appearance.tileStyle', [['rounded', 'Afgerond'], ['square', 'Vierkant']]))),
+          el('div', { class: 'inline' },
+            field('Tegelgrootte', selectFor('appearance.tileSize', Object.entries(TILE_SIZES).map(([value, [label]]) => [value, label]))),
+            field('Tegelvorm', selectFor('appearance.tileRatio', Object.entries(TILE_RATIOS).map(([value, [label]]) => [value, label])))),
+          el('p', { class: 'field-hint' },
+            'Automatisch: groter op grote schermen. Een bredere vorm gebruikt de breedte van het scherm beter, ' +
+            'vooral voor agenda en nieuws. De tekst in de tegels groeit mee.'),
+          field('Tegelstijl', selectFor('appearance.tileStyle', [['rounded', 'Afgerond'], ['square', 'Vierkant'], ['glass', 'Glas (doorschijnend)']]))),
         buildSettingsGroup('Favicons',
           'Kleine logo\'s bij snelle links en links in een link-tegel. Met een Worker zoekt die ze op bij de site zelf of ' +
           'bij Google; zonder Worker komen ze van Google, DuckDuckGo of de site. Die diensten zien welke websites in je links staan.',
@@ -3562,7 +3886,7 @@
       ],
       rss: (tile, base) => [
         field('Feed-adres', inputFor(`${base}.feedUrl`, { type: 'url', placeholder: 'https://…/rss' }),
-          'Het adres van een RSS- of Atom-feed. De feed wordt via de Worker opgehaald (fase 7).'),
+          'Het adres van een RSS- of Atom-feed. De feed wordt via de Worker opgehaald.'),
         field('Aantal berichten', inputFor(`${base}.maxItems`, { type: 'number', min: 1, max: 30, class: 'input-short' }))
       ],
       calendar: (tile, base) => [
@@ -3598,7 +3922,7 @@
           TILE_EDITORS[tile.type](tile, base)),
         buildSettingsGroup('Achtergrond', 'Een afbeelding achter de tegel, gedimd zodat de inhoud leesbaar blijft.',
           imageField('tile', tile.background, `${base}.background`),
-          isImageDataUrl(tile.background)
+          isImageValue(tile.background)
             ? field(`Dimmen (${tile.backgroundDim}%)`, inputFor(`${base}.backgroundDim`, {
                 type: 'range', min: 40, max: 95, step: 5, 'data-type': 'number', 'data-rerender': true, 'aria-label': 'Sterkte van de overlay'
               }), 'Hoe hoger, hoe rustiger de afbeelding.')
@@ -3888,6 +4212,20 @@
       return SHORT_DATE_FORMAT.format(date).replace('.', '');
     }
 
+    // Korte, stabiele vingerafdruk van een tekst (cyrb53), als naam voor een afbeelding in IndexedDB.
+    function hashString(text) {
+      let h1 = 0xdeadbeef;
+      let h2 = 0x41c6ce57;
+      for (let index = 0; index < text.length; index++) {
+        const code = text.charCodeAt(index);
+        h1 = Math.imul(h1 ^ code, 2654435761);
+        h2 = Math.imul(h2 ^ code, 1597334677);
+      }
+      h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+      h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+      return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+    }
+
     function formatNumber(value) {
       return value.toLocaleString('nl-NL');
     }
@@ -3952,18 +4290,31 @@
     /* ======================================================================
        Init
        ====================================================================== */
+    // Afbeeldingen uit IndexedDB laden en tonen; afbeeldingen die nog in de config staan (oudere versie) verhuizen.
+    async function initImages() {
+      assetsReady = await initDB().then(() => true, () => false);
+      if (!assetsReady) return;
+      if (await loadImages(config)) renderDashboard();
+      if (imageSlots(config).some(([object, key]) => isImageDataUrl(object[key]))) saveData();
+    }
+
     async function init() {
       const { data, status } = loadData();
       config = data;
+      const grid = $('#tileGrid');
+      grid.classList.add('is-entering');
+      setTimeout(() => grid.classList.remove('is-entering'), 1500);
       renderDashboard();
       bindEvents();
       startClock();
       await syncBackup(status);
+      await initImages();
       updateWeather();
       updateFeeds();
       updateCalendars();
       // Elke minuut de agenda opnieuw tekenen: afgelopen afspraken vervagen, "nu" schuift mee, om middernacht een nieuwe dag.
       setInterval(() => renderCalendarTiles(), 60_000);
+      setInterval(refreshFavicons, FAVICON_REFRESH_MS);
       requestPersistentStorage();
     }
 

@@ -28,7 +28,7 @@ const worker = (await import(WORKER_PATH)).default;
 const env = { DASHBOARD_KEY: 'k' };
 
 const browser = await chromium.launch();
-const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, timezoneId: 'Europe/Amsterdam' });
+const ctx = await browser.newContext({ reducedMotion: 'reduce',  viewport: { width: 1440, height: 900 }, timezoneId: 'Europe/Amsterdam' });
 await ctx.route('https://dash.test.workers.dev/**', async route => {
   const req = route.request();
   const res = await worker.fetch(new Request(req.url(), { method: req.method(), headers: req.headers() }), env, { waitUntil() {} });
@@ -142,10 +142,10 @@ await p.click('[data-action="save-settings"]'); await p.waitForTimeout(300);
 const bg = await p.evaluate(() => {
   const t = document.querySelector('[data-tile-id="t1"]'), s = getComputedStyle(t);
   const c = config.tiles.find(x => x.id === 't1');
-  return { cls: t.classList.contains('has-background'), dim: t.style.getPropertyValue('--tile-dim'), image: s.backgroundImage, jpeg: c.background.startsWith('data:image/jpeg'), length: c.background.length };
+  return { cls: t.classList.contains('has-background'), dim: t.style.getPropertyValue('--tile-dim'), image: s.backgroundImage, jpeg: resolveImage(c.background).startsWith('data:image/jpeg'), length: resolveImage(c.background).length, ref: c.background.startsWith('asset:') };
 });
 check('tegel heeft de achtergrond met overlay', bg.cls && bg.dim === '60%' && /linear-gradient.*url\("data:image\/jpeg/.test(bg.image), bg.image.slice(0, 80));
-check('afbeelding verkleind en als JPEG bewaard', bg.jpeg && bg.length < 200_000, String(bg.length));
+check('afbeelding verkleind en als JPEG bewaard (in IndexedDB)', bg.jpeg && bg.ref && bg.length < 200_000, String(bg.length));
 check('andere tegels zonder achtergrond', await p.evaluate(() => [...document.querySelectorAll('.tile:not([data-tile-id="t1"])')].every(t => !t.classList.contains('has-background'))));
 check('dimmen wordt begrensd (40–95)', await p.evaluate(() => normalizeConfig({ ...DEFAULT_CONFIG, tiles: [{ id: 'a', type: 'link', title: 'A', target: { kind: 'url', value: 'https://a.nl' }, background: 'data:image/png;base64,AAAA', backgroundDim: 10 }] }).tiles[0].backgroundDim === 40));
 check('geen externe afbeelding als achtergrond', await p.evaluate(() => normalizeConfig({ ...DEFAULT_CONFIG, tiles: [{ id: 'a', type: 'link', title: 'A', target: { kind: 'url', value: 'https://a.nl' }, background: 'https://evil.test/x.png' }] }).tiles[0].background === ''));

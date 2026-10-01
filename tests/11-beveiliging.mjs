@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { INDEX_URL, FIX } from './helpers.mjs';
 
 const browser = await chromium.launch();
-const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+const ctx = await browser.newContext({ reducedMotion: 'reduce',  viewport: { width: 1280, height: 900 } });
 const json = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' };
 await ctx.route('https://api.open-meteo.com/**', r => r.fulfill({ headers: json, body: fs.readFileSync(FIX + '/weather.json', 'utf8') }));
 await ctx.route('https://geocoding-api.open-meteo.com/**', r => r.fulfill({ headers: json, body: fs.readFileSync(FIX + '/geo.json', 'utf8') }));

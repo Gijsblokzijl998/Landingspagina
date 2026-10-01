@@ -9,7 +9,7 @@ const browser = await chromium.launch();
 const results = {};
 for (const scheme of ['light', 'dark']) {
   // bypassCSP: de beveiligingsregel van de pagina zou het ingevoegde axe-script terecht blokkeren.
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: scheme, timezoneId: 'Europe/Amsterdam', bypassCSP: true });
+  const ctx = await browser.newContext({ reducedMotion: 'reduce',  viewport: { width: 1280, height: 900 }, colorScheme: scheme, timezoneId: 'Europe/Amsterdam', bypassCSP: true });
   await ctx.route(/^https:/, r => r.fulfill({ status: 404, body: '' }));
   const p = await ctx.newPage();
   await p.clock.setFixedTime(new Date('2026-10-01T08:00:00+02:00'));
@@ -34,6 +34,11 @@ for (const scheme of ['light', 'dark']) {
     results[scheme + ' ' + label] = r;
   };
   await run('dashboard');
+  // Glas op een verloop, met de lopende en eerstvolgende afspraak gemarkeerd
+  await p.evaluate(() => { config.appearance.tileStyle = 'glass'; config.appearance.background = { ...config.appearance.background, type: 'gradient', gradient: 'schemer' }; renderDashboard(); });
+  await p.waitForTimeout(150);
+  await run('dashboard glas + verloop');
+  await p.evaluate(() => { config.appearance.tileStyle = 'rounded'; renderDashboard(); });
   await p.click('#settingsBtn');
   for (const section of ['general', 'appearance', 'tiles', 'quickLinks', 'weather', 'services', 'data']) {
     await p.click('[data-section="' + section + '"]'); await p.waitForTimeout(150);
@@ -45,7 +50,7 @@ for (const scheme of ['light', 'dark']) {
 }
 // Toetsenbord: instellingen openen en sluiten zonder muis, focus keert terug
 {
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const ctx = await browser.newContext({ reducedMotion: 'reduce',  viewport: { width: 1280, height: 900 } });
   await ctx.route(/^https:/, r => r.fulfill({ status: 404, body: '' }));
   const p = await ctx.newPage();
   await p.goto(INDEX_URL);

@@ -7,7 +7,7 @@ const geoJson = fs.readFileSync(S + '/geo.json', 'utf8');
 const png = fs.readFileSync(FIX + '/logo.png');
 const url = INDEX_URL;
 const browser = await chromium.launch();
-const ctx = await browser.newContext({ viewport: { width: 1280, height: 860 }, colorScheme: 'light' });
+const ctx = await browser.newContext({ reducedMotion: 'reduce',  viewport: { width: 1280, height: 860 }, colorScheme: 'light' });
 let weatherMode = 'ok';
 const weatherRequests = [];
 const cors = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' };
@@ -71,8 +71,10 @@ check('voetbalk ook onderaan na scrollen', await p.evaluate(() => Math.abs(docum
 await p.setViewportSize({ width: 1280, height: 860 });
 
 // --- Tegeliconen ---
-check('standaardtegels gebruiken lijniconen', await p.locator('#tileGrid .tile-icon svg').count() === 2 && await p.locator('#tileGrid .tile-heading svg').count() === 2);
-check('RSS-tegel toont het favicon van de site als icoon', await p.locator('#tileGrid .tile--rss .tile-heading .favicon').count() === 1);
+check('standaardtegels gebruiken lijniconen', await p.locator('#tileGrid .tile-icon svg').count() === 2 && await p.locator('#tileGrid .tile-heading svg').count() === 3);
+check('RSS-tegel: RSS-icoon zolang de feed (en dus de site) onbekend is', await p.locator('#tileGrid .tile--rss .tile-heading .favicon').count() === 0);
+await p.evaluate(() => { feedState.set(config.tiles.find(t => t.type === 'rss').feedUrl, { fetchedAt: Date.now(), feed: { title: 'NOS', link: 'https://nos.nl/', items: [] }, error: null }); renderFeedTiles('https://feeds.nos.nl/nosnieuwsalgemeen'); });
+check('RSS-tegel toont daarna het favicon van de site', await p.locator('#tileGrid .tile--rss .tile-heading .favicon').count() === 1 && await p.evaluate(() => document.querySelector('.tile--rss .tile-heading').dataset.site === 'https://nos.nl/'));
 await p.click('#settingsBtn'); await p.click('[data-section="tiles"]');
 await p.click('[data-action="edit-tile"][data-id="t2"] >> nth=0');
 check('iconenkiezer met ' + await p.locator('.icon-choice').count() + ' keuzes', await p.locator('.icon-choice').count() > 30);
