@@ -3,6 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!--
+    Beveiligingsregel (CSP): alleen de twee ingebouwde scripts (vastgelegd met hun SHA-256), Open-Meteo, de Worker
+    op workers.dev en afbeeldingen via https/data/blob/file. Na het wijzigen van een script: node tests/check-csp.mjs --fix
+  -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-0rmtLU0ARXSsrvNsuB+4/Bmhz0qNOt8iOlmRWEBipkk=' 'sha256-b8dcIPfcFiJVa5eRhCahyleMZmwzBswtgRYdl2Oke3U='; style-src 'unsafe-inline'; img-src https: data: blob: file:; connect-src https://api.open-meteo.com https://geocoding-api.open-meteo.com https://*.workers.dev; base-uri 'none'; form-action 'none'; object-src 'none'">
   <title>Mijn Dashboard</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='2' width='12' height='12' rx='3' fill='%232563eb'/%3E%3Crect x='18' y='2' width='12' height='12' rx='3' fill='%2360a5fa'/%3E%3Crect x='2' y='18' width='12' height='12' rx='3' fill='%2360a5fa'/%3E%3Crect x='18' y='18' width='12' height='12' rx='3' fill='%232563eb'/%3E%3C/svg%3E">
   <script>
@@ -442,6 +447,7 @@
     .tile-heading span:last-child { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
     .tile-heading .icon { width: 15px; height: 15px; }
 
+    .tile-body:focus-visible { outline-offset: 2px; border-radius: 6px; }
     .tile-body {
       flex: 1;
       min-height: 0;
@@ -550,7 +556,9 @@
       font-size: .8rem;
       line-height: 1.3;
     }
-    .agenda-item.is-past { opacity: .45; }
+    /* Afgelopen afspraken grijs (met voldoende contrast), niet doorzichtig. */
+    .agenda-item.is-past .agenda-title { color: var(--text-muted); }
+    .agenda-item.is-past .agenda-time { text-decoration: line-through; }
     .agenda-item.is-now { border-left-color: var(--text-muted); background: var(--surface-hover); }
     .agenda-time { padding-top: 1px; color: var(--text-muted); font-size: .72rem; font-variant-numeric: tabular-nums; }
     .agenda-text { display: grid; min-width: 0; }
@@ -1737,7 +1745,8 @@
     function buildCalendarTile(tile) {
       return el('section', { class: 'tile tile--calendar', 'aria-label': tile.title },
         buildTileHeading(tile),
-        el('div', { class: 'tile-body' }, buildCalendarContent(tile)));
+        // tabindex: de lijst kan scrollen en moet dan ook met het toetsenbord te bereiken zijn.
+        el('div', { class: 'tile-body', tabindex: 0, 'aria-label': `${tile.title}: afspraken` }, buildCalendarContent(tile)));
     }
 
     // Afspraken per dag, van vandaag tot daysAhead dagen vooruit.
@@ -2082,6 +2091,16 @@
     /* ======================================================================
        Databronnen
        ====================================================================== */
+    // De beveiligingsregel (CSP) laat alleen verbindingen met *.workers.dev toe.
+    function workerUrlProblem(value) {
+      const url = safeUrl(value, ['https:']);
+      if (!url) return 'Het Worker-adres moet met https:// beginnen.';
+      if (!new URL(url).hostname.endsWith('.workers.dev')) {
+        return 'Gebruik het workers.dev-adres van je Worker, bijvoorbeeld https://landingspagina.<jouw-subdomein>.workers.dev.';
+      }
+      return null;
+    }
+
     // Adres van een Worker-route; werkt ook als het Worker-adres op een / eindigt.
     function workerEndpoint(services, path) {
       return `${services.workerUrl.trim().replace(/\/+$/, '')}${path}`;
@@ -2849,9 +2868,8 @@
       if (data.general.logo.source === 'url' && !resolveLogo(data.general.logo)) {
         return { section: 'general', message: 'Vul een geldig adres of pad in voor het logo.' };
       }
-      if (data.services.workerUrl && !safeUrl(data.services.workerUrl, ['https:'])) {
-        return { section: 'services', message: 'Het Worker-adres moet met https:// beginnen.' };
-      }
+      const workerProblem = data.services.workerUrl && workerUrlProblem(data.services.workerUrl);
+      if (workerProblem) return { section: 'services', message: workerProblem };
       return null;
     }
 
@@ -3306,8 +3324,11 @@
         status.textContent = message;
         status.dataset.state = state;
       };
-      if (!safeUrl(draft.services.workerUrl, ['https:'])) {
-        show('Vul eerst een Worker-adres in dat met https:// begint.', 'error');
+      const problem = draft.services.workerUrl
+        ? workerUrlProblem(draft.services.workerUrl)
+        : 'Vul eerst het adres van je Worker in.';
+      if (problem) {
+        show(problem, 'error');
         return;
       }
       show('Verbinding testen…');

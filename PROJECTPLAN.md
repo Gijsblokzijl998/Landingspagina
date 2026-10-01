@@ -1,6 +1,6 @@
 # Projectplan: Landingspagina (persoonlijk dashboard)
 
-> **Status:** v2, 1 oktober 2026. De antwoorden op V1–V5 zijn verwerkt (zie [§12](#12-beslissingen-en-open-vragen)).
+> **Status:** v3, 1 oktober 2026. **Alle fases (0–9) zijn klaar.** De antwoorden op V1–V5 zijn verwerkt (zie [§12](#12-beslissingen-en-open-vragen)).
 > **Doel van dit document:** één gedeeld beeld van wat we bouwen, hoe het in elkaar zit en in welke volgorde.
 
 ---
@@ -49,9 +49,10 @@ Landingspagina/
 │   ├── src/index.js
 │   ├── wrangler.toml
 │   └── README.md       ← deploy-instructies (Cloudflare-dashboard of wrangler)
-├── tests/              ← (fase 9) Playwright-smoketests + fixtures (RSS 2.0, Atom, Google-ICS)
+├── tests/              ← Playwright- en Node-tests (npm test) + fixtures (NOS, The Verge, Google-achtige ICS, Open-Meteo)
+├── package.json        ← alleen voor de tests (Playwright, axe-core)
 ├── PROJECTPLAN.md
-└── README.md           ← installatie (lokaal + Edge-startpagina) en bijwerken
+└── README.md           ← installatie (lokaal + Edge-startpagina), koppelen, problemen oplossen
 ```
 
 ---
@@ -423,7 +424,7 @@ Elke fase levert een werkend `index.html` op en wordt apart gecommit. Grootte: S
 | **6** | Cloudflare Worker | `worker/` met `/rss`, `/ics` en `/ping`, sleutel, allowlist, CORS, README; "Verbinding testen" in de instellingen | Worker gedeployed; testknop groen; verzoek zonder sleutel → 401 ✅ (code en tests klaar; deployen doe jij) | S |
 | **7** | RSS-tegel | `fetchAndRenderRSS`, `parseFeed` (RSS 2.0 / Atom / RDF), verversen, foutstatus | drie verschillende echte feeds tonen correct; foute URL geeft nette melding ✅ (getest met NOS, The Verge en RDF) | M |
 | **8** | Agenda-tegel (2x2) | `parseICS`, `expandEvents`, weergave per dag | jouw Google-agenda klopt 30 dagen vooruit, inclusief herhalingen, uitzonderingen, hele-dag-afspraken en zomer-/wintertijd ✅ (getest met een Google-achtige export; met jouw echte agenda nog te controleren) | L |
-| **9** | Afwerking | toegankelijkheid, foutstatussen, lege staten, CSP, Playwright-smoketests, README | checklist §9 afgevinkt; dashboard draait als Edge-startpagina | M |
+| **9** | Afwerking | toegankelijkheid, foutstatussen, lege staten, CSP, Playwright-smoketests, README | checklist §9 afgevinkt ✅ (axe zonder bevindingen, CSP met script-hashes, 251 geautomatiseerde controles); dashboard als Edge-startpagina instellen doe jij | M |
 
 De volgorde is zo gekozen dat er na fase 3 al een bruikbaar startscherm is. Fase 5 (weer) hangt niet af van de
 Worker en kan eventueel naar voren.
@@ -486,5 +487,9 @@ Worker en kan eventueel naar voren.
    UNTIL, BYDAY met volgnummer, BYMONTHDAY, BYMONTH en BYSETPOS; EXDATE; verplaatste en geannuleerde exemplaren;
    IANA- en Windows-tijdzones; zomer-/wintertijd). Daarnaast: titel en welkomsttekst samen in het midden, groter
    instellingenscherm, weer niet meer klikbaar, tegels verslepen op het dashboard.
-9. **Fase 9**: afwerking (toegankelijkheid, CSP, smoketests in de repo, README).
-10. Na elke fase samen kijken en waar nodig het plan bijstellen. Dit document wordt bijgewerkt als keuzes veranderen.
+9. ~~**Fase 9**: afwerking~~ ✅
+   - toegankelijkheid: axe-core zonder bevindingen in licht en donker; agenda-contrast en toetsenbordtoegang verbeterd;
+   - beveiliging: CSP met SHA-256 van de twee scripts, `connect-src` alleen Open-Meteo en `*.workers.dev`;
+     Worker-adressen buiten workers.dev worden met uitleg geweigerd;
+   - tests in de repo (`npm test`, 13 suites, 251 controles) en README afgerond.
+10. Wensen of problemen na gebruik op Windows/Edge: per onderwerp bijstellen. samen kijken en waar nodig het plan bijstellen. Dit document wordt bijgewerkt als keuzes veranderen.
