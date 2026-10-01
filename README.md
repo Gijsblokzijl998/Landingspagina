@@ -20,7 +20,8 @@ Alles stel je in via **⚙ Instellingen**. Wijzigingen worden pas bewaard als je
     als *halve tegel*: half zo hoog, met icoon en titel naast elkaar; twee passen er in één vak.
     Een lokaal pad plak je in, bijvoorbeeld via rechtsklik → *Als pad kopiëren* in Verkenner.
   - **Link-tegel.** Een lijstje links.
-  - **RSS-tegel (2 × 1).** De nieuwste berichten van een RSS- of Atom-feed, met het favicon van de site als icoon.
+  - **RSS-tegel (2 × 1).** De nieuwste berichten van een RSS- of Atom-feed, met het logo uit de feed of het favicon van de site
+    als icoon.
     Eén regel per bericht, met vooraan een korte datum in de accentkleur (tijd van vandaag, dag deze week, anders de
     datum). Elke 15 minuten ververst.
   - **Agenda-tegel (standaard 3 × 2, instelbaar van 2 × 2 tot 4 × 4).** De afspraken uit je Google Agenda van

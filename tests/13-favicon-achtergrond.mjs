@@ -7,6 +7,7 @@ import { INDEX_URL, WORKER_PATH, FIX, OUT } from './helpers.mjs';
 const png = fs.readFileSync(FIX + '/logo.png');
 const nos = fs.readFileSync(FIX + '/nos.xml', 'utf8');
 const ics = fs.readFileSync(FIX + '/agenda.ics', 'utf8');
+const tweakers = fs.readFileSync(FIX + '/tweakers.xml', 'utf8');
 const ICS_URL = 'https://calendar.google.com/calendar/ical/x/private-y/basic.ics';
 
 // Worker in Node met nagebootste bronnen
@@ -21,6 +22,14 @@ globalThis.fetch = async url => {
     return feedDown ? new Response('kapot', { status: 503 }) : new Response(nos, { headers: { 'Content-Type': 'application/xml' } });
   }
   if (url === ICS_URL) return new Response(ics, { headers: { 'Content-Type': 'text/calendar' } });
+  if (url === 'https://tweakers.net/feeds/mixed.xml') return new Response(tweakers, { headers: { 'Content-Type': 'application/rss+xml' } });
+  if (u.hostname === 'tweakers.net' && u.pathname === '/') {
+    // Zoals Tweakers zonder cookies: doorverwezen naar de cookiemelding van DPG Media, zonder icoon.
+    const r = new Response('<html><head><title>DPG Media Privacy Gate</title></head></html>', { headers: { 'Content-Type': 'text/html' } });
+    Object.defineProperty(r, 'url', { value: 'https://myprivacy.dpgmedia.nl/consent?siteKey=x' });
+    return r;
+  }
+  if (u.hostname === 'tweakers.net') return new Response('geblokkeerd', { status: 403, headers: { 'Content-Type': 'text/html' } });
   if (u.hostname === 'nos.nl' && u.pathname === '/favicon.ico') return new Response(png, { headers: { 'Content-Type': 'image/png' } });
   return new Response('', { status: 404, headers: { 'Content-Type': 'text/html' } });
 };
@@ -170,6 +179,20 @@ check('keuze "Favicon" voor de RSS-tegel, geselecteerd', (await p.getAttribute('
 await p.click('.icon-choice[data-icon="rss"]');
 await p.click('[data-action="save-settings"]'); await p.waitForTimeout(200);
 check('ander icoon kiezen kan nog', await p.evaluate(() => document.querySelector('.tile--rss .tile-heading svg') !== null && !document.querySelector('.tile--rss .tile-heading .favicon')));
+
+// --- Tweakers: homepage geeft een cookiemelding, de Worker vindt geen icoon; het logo uit de feed werkt wel ---
+check('logo uit de feed gelezen (RSS <image> en Atom <icon>)', await p.evaluate(([t, v]) => parseFeed(t, 'https://tweakers.net/feeds/mixed.xml').image === 'https://tweakers.net/icon-192.png' && parseFeed(v, 'https://www.theverge.com/rss/index.xml').image.startsWith('https://platform.theverge.com/'), [tweakers, fs.readFileSync(FIX + '/verge.xml', 'utf8')]));
+await p.route('https://tweakers.net/icon-192.png', route => route.fulfill({ status: 200, headers: { 'Content-Type': 'image/png' }, body: png }));
+await p.evaluate(() => { const d = structuredClone(config); d.tiles.push({ id: 'tw', type: 'rss', title: 'Tweakers', icon: 'favicon', feedUrl: 'https://tweakers.net/feeds/mixed.xml', maxItems: 5 }); d.appearance.gridRows = 6; applyConfig(normalizeConfig(d)); });
+await p.waitForTimeout(1500);
+const tw = await p.evaluate(() => { const f = document.querySelector('[data-tile-id="tw"] .tile-heading .favicon'); return { tag: f?.tagName, src: f?.getAttribute('src'), width: f?.naturalWidth, items: document.querySelectorAll('[data-tile-id="tw"] .feed-item').length }; });
+check('Tweakers: favicon uit het logo van de feed, ondanks de cookiemelding', tw.tag === 'IMG' && tw.src === 'https://tweakers.net/icon-192.png' && tw.width > 0 && tw.items === 3, JSON.stringify(tw));
+check('Worker vindt bij Tweakers zelf geen icoon (cookiemelding, geblokkeerd)', await p.evaluate(async () => { const r = await fetch('https://dash.test.workers.dev/favicon?url=https%3A%2F%2Ftweakers.net', { headers: { 'X-Dashboard-Key': 'k' } }); return r.status === 204; }));
+// Lukt het logo niet, dan alsnog de gewone zoektocht (hier: de letter)
+await p.unroute('https://tweakers.net/icon-192.png');
+await p.route('https://tweakers.net/icon-192.png', route => route.fulfill({ status: 404, body: '' }));
+await p.evaluate(() => renderGrid()); await p.waitForTimeout(800);
+check('logo onbereikbaar: terugval op de gewone zoektocht', await p.evaluate(() => document.querySelector('[data-tile-id="tw"] .tile-heading .favicon--letter')?.textContent === 'T'));
 
 console.log('paginafouten:', errors.length ? errors : 'geen');
 console.log(fails ? fails + ' FOUT(EN)' : 'ALLES OK');

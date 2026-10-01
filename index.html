@@ -7,7 +7,7 @@
     Beveiligingsregel (CSP): alleen de twee ingebouwde scripts (vastgelegd met hun SHA-256), Open-Meteo, de Worker
     op workers.dev en afbeeldingen via https/data/blob/file. Na het wijzigen van een script: node tests/check-csp.mjs --fix
   -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-0rmtLU0ARXSsrvNsuB+4/Bmhz0qNOt8iOlmRWEBipkk=' 'sha256-5km0qM9nL1dBGucTkjOl8xHrmyMwv6Yizzi8xaaYRAE='; style-src 'unsafe-inline'; img-src https: data: blob: file:; connect-src https://api.open-meteo.com https://geocoding-api.open-meteo.com https://*.workers.dev; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-0rmtLU0ARXSsrvNsuB+4/Bmhz0qNOt8iOlmRWEBipkk=' 'sha256-OPjfB6YHAL58htlZBzMsqEQoA/7ahibAYTdAWlpGQDc='; style-src 'unsafe-inline'; img-src https: data: blob: file:; connect-src https://api.open-meteo.com https://geocoding-api.open-meteo.com https://*.workers.dev; base-uri 'none'; form-action 'none'; object-src 'none'">
   <title>Mijn Dashboard</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='2' width='12' height='12' rx='3' fill='%232563eb'/%3E%3Crect x='18' y='2' width='12' height='12' rx='3' fill='%2360a5fa'/%3E%3Crect x='2' y='18' width='12' height='12' rx='3' fill='%2360a5fa'/%3E%3Crect x='18' y='18' width='12' height='12' rx='3' fill='%232563eb'/%3E%3C/svg%3E">
   <script>
@@ -2149,7 +2149,10 @@
         // Het favicon van de site is pas bekend als de feed geladen is.
         const heading = body?.parentElement.querySelector('.tile-heading');
         const site = tile.icon === 'favicon' ? feedSiteUrl(tile) : null;
-        if (heading && (heading.dataset.site ?? null) !== site) heading.replaceWith(buildTileHeading(tile));
+        const image = tile.icon === 'favicon' ? feedImageUrl(tile) : null;
+        if (heading && ((heading.dataset.site ?? null) !== site || (heading.dataset.image ?? null) !== image)) {
+          heading.replaceWith(buildTileHeading(tile));
+        }
       }
     }
 
@@ -2279,6 +2282,12 @@
       return null;
     }
 
+    // Het logo dat de feed zelf noemt (RSS <image><url>, Atom <icon>/<logo>). Bij sites met een cookiemelding,
+    // zoals Tweakers, is dat de betrouwbaarste bron: de homepage zelf geeft dan alleen de cookiemelding.
+    function feedImageUrl(tile) {
+      return safeUrl(feedState.get(tile.feedUrl)?.feed?.image, ['https:']);
+    }
+
     // Pas als de feed geladen is, is de site bekend (feeds.nos.nl → nos.nl); tot dan het RSS-icoon.
     function feedSiteUrl(tile) {
       const feed = feedState.get(tile.feedUrl)?.feed;
@@ -2288,7 +2297,7 @@
 
     function buildTileHeading(tile) {
       const glyph = buildTileGlyph(tile);
-      return el('h2', { class: 'tile-heading', 'data-site': tile.icon === 'favicon' ? tileSiteUrl(tile) : null },
+      return el('h2', { class: 'tile-heading', 'data-site': tile.icon === 'favicon' ? tileSiteUrl(tile) : null, 'data-image': tile.icon === 'favicon' && tile.type === 'rss' ? feedImageUrl(tile) : null },
         glyph ? el('span', { 'aria-hidden': 'true' }, glyph) : null,
         el('span', {}, tile.title));
     }
@@ -2297,7 +2306,8 @@
     function buildTileGlyph(tile) {
       if (tile.icon === 'favicon') {
         const site = tileSiteUrl(tile);
-        return (site && buildFavicon(site)) ?? icon(tile.type === 'rss' ? 'rss' : 'globe');
+        const preferred = tile.type === 'rss' ? feedImageUrl(tile) : null;
+        return (site && buildFavicon(site, { preferred })) ?? icon(tile.type === 'rss' ? 'rss' : 'globe');
       }
       if (TILE_ICONS[tile.icon]) return icon(tile.icon);
       if (tile.icon) return el('span', { class: 'emoji-icon' }, tile.icon);
@@ -2338,7 +2348,8 @@
 
     // Favicon van de site, grijs tot je de link aanwijst. Lukt een bron niet, dan de volgende;
     // levert geen enkele bron iets op, dan de eerste letter van het domein.
-    function buildFavicon(href) {
+    // preferred: een bekend icoon van de site (bv. het logo uit een RSS-feed); dat wordt eerst geprobeerd.
+    function buildFavicon(href, { preferred = null } = {}) {
       if (!config.appearance.favicons) return null;
       const { protocol, hostname } = new URL(href);
       if (protocol !== 'http:' && protocol !== 'https:') return null;
@@ -2361,22 +2372,35 @@
         if (index < sources.length) image.src = sources[index];
         else showLetter();
       };
-      image.addEventListener('error', tryNext);
-      // Een (bijna) leeg plaatje telt als mislukt.
-      image.addEventListener('load', () => { if (image.naturalWidth < 8) tryNext(); });
-
       // Met een Worker zoekt die het favicon op (betrouwbaarder). Vindt de Worker niets, dan direct de letter:
       // de diensten in de browser zouden dan alleen een niet-herkenbaar standaardplaatje geven.
       // Is de Worker niet bruikbaar (bv. een oudere versie), dan de rij bronnen in de browser.
-      if (config.services.workerUrl) {
+      const search = () => {
+        if (!config.services.workerUrl) {
+          tryNext();
+          return;
+        }
         workerFavicon(site.host).then(result => {
           if (result?.url) image.src = result.url;
           else if (result?.missing) showLetter();
           else tryNext();
         });
-      } else {
-        tryNext();
-      }
+      };
+      let usingPreferred = Boolean(preferred);
+      const failed = () => {
+        if (usingPreferred) {
+          usingPreferred = false;
+          search();
+        } else {
+          tryNext();
+        }
+      };
+      image.addEventListener('error', failed);
+      // Een (bijna) leeg plaatje telt als mislukt.
+      image.addEventListener('load', () => { if (image.naturalWidth < 8) failed(); });
+
+      if (usingPreferred) image.src = preferred;
+      else search();
       return image;
     }
 
@@ -2385,7 +2409,7 @@
     function workerFavicon(host) {
       if (!faviconRequests.has(host)) {
         faviconRequests.set(host, (async () => {
-          const key = `favicon2:${host}`; // 2: opnieuw ophalen na Worker 1.2.0 (betere volgorde bij doorverwijzingen)
+          const key = `favicon3:${host}`; // 3: uitkomsten van vóór Worker 1.2.0 (cookiemeldingen) niet meer gebruiken
           const cached = await idbGet('cache', key).catch(() => null);
           const maxAge = cached?.blob ? FAVICON_MAX_AGE_MS : FAVICON_MISSING_MAX_AGE_MS;
           const fromCache = () => (cached?.blob ? { url: objectUrl(cached.blob) } : null);
@@ -2884,6 +2908,10 @@
         return '';
       };
       const channel = isAtom ? root : child(root, 'channel') ?? root;
+      // RSS 2.0: <channel><image><url>; RSS 1.0 (RDF): <image><url> naast <channel>; Atom: <icon> of <logo>.
+      const image = isAtom
+        ? text(root, 'icon', 'logo')
+        : [child(channel, 'image'), child(root, 'image')].filter(Boolean).map(node => text(node, 'url')).find(Boolean) ?? '';
       const entries = [...root.getElementsByTagNameNS('*', isAtom ? 'entry' : 'item')];
 
       return {
@@ -2891,6 +2919,7 @@
         link: resolveUrl(isAtom
           ? ([...root.children].find(element => element.localName === 'link' && (element.getAttribute('rel') ?? 'alternate') === 'alternate')?.getAttribute('href') ?? '')
           : text(channel, 'link'), baseUrl),
+        image: image ? resolveUrl(image, baseUrl) : '',
         items: entries.map(entry => {
           let link = '';
           if (isAtom) {
