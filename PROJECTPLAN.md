@@ -1,15 +1,19 @@
 # Projectplan: Landingspagina (persoonlijk dashboard)
 
-> **Status:** concept v1, 1 oktober 2026
+> **Status:** v2, 1 oktober 2026. De antwoorden op V1–V5 zijn verwerkt (zie [§12](#12-beslissingen-en-open-vragen)).
 > **Doel van dit document:** één gedeeld beeld van wat we bouwen, hoe het in elkaar zit en in welke volgorde.
-> Open vragen staan in [§12](#12-open-vragen-met-voorlopige-keuze). Zolang die niet beantwoord zijn, bouwen we met de voorlopige keuze die daar staat.
 
 ---
 
 ## 1. Doel en uitgangspunten
 
 Een persoonlijk startscherm voor de browser dat je zelf aanpast: tegels die naar websites of lokale bestanden
-leiden, met daarnaast weer, nieuws (RSS) en je Outlook-agenda. Alles draait in de browser.
+leiden, met daarnaast weer, nieuws (RSS) en je agenda. Alles draait in de browser.
+
+**Gebruikssituatie**
+- Microsoft Edge op Windows.
+- `index.html` staat lokaal en wordt geopend door erop te dubbelklikken in Verkenner, dus via `file:///…`.
+- Het bestand is in Edge ingesteld als startpagina.
 
 **Eisen uit de beschrijving**
 
@@ -20,7 +24,7 @@ leiden, met daarnaast weer, nieuws (RSS) en je Outlook-agenda. Alles draait in d
 | E3 | **Tegels** navigeren naar URL's, naar lokale bestanden (tijdens de sessie) of naar onthouden paden. |
 | E4 | **Weer** via Open-Meteo, inclusief geocoding om een plaatsnaam op te zoeken. |
 | E5 | **RSS/Atom-feeds** ophalen via een Cloudflare Worker. |
-| E6 | **Outlook-agenda (ICS)** ophalen via een Cloudflare Worker. |
+| E6 | **Agenda (ICS)** ophalen via een Cloudflare Worker. Bron: Google Agenda, waar de Outlook-agenda naartoe gesynchroniseerd wordt. |
 | E7 | **Instellingenmodal** met licht/donker-thema, links beheren en het uiterlijk aanpassen. |
 | E8 | **Thema via CSS custom properties** (`:root`), voor licht en donker. |
 
@@ -44,10 +48,10 @@ Landingspagina/
 ├── worker/             ← Cloudflare Worker: proxy voor RSS en ICS
 │   ├── src/index.js
 │   ├── wrangler.toml
-│   └── README.md       ← deploy-instructies (wrangler)
-├── tests/              ← (fase 9) Playwright-smoketests + fixtures (RSS 2.0, Atom, Outlook-ICS)
+│   └── README.md       ← deploy-instructies (Cloudflare-dashboard of wrangler)
+├── tests/              ← (fase 9) Playwright-smoketests + fixtures (RSS 2.0, Atom, Google-ICS)
 ├── PROJECTPLAN.md
-└── README.md
+└── README.md           ← installatie (lokaal + Edge-startpagina) en bijwerken
 ```
 
 ---
@@ -75,7 +79,7 @@ Landingspagina/
 ### 3.1 Header (`<header>`)
 - **Links:** logo (geüploade afbeelding of een URL, geen logo kan ook).
 - **Midden:** paginatitel en optioneel een welkomsttekst. `{dagdeel}` in de tekst wordt vervangen door
-  "Goedemorgen", "Goedemiddag" of "Goedenavond".
+  "Goedemorgen", "Goedemiddag", "Goedenavond" of "Goedenacht".
 - **Rechts:**
   - weerwidget: icoon, temperatuur en plaatsnaam, met min/max van vandaag in de tooltip;
   - klok: tijd met optioneel de datum, met of zonder seconden;
@@ -83,17 +87,18 @@ Landingspagina/
   - instellingenknop (⚙), die de modal opent.
 
 ### 3.2 Hoofdcontainer (`#mainContainer`) met het tegelgrid (`.grid`)
-- Een CSS-grid met een instelbaar aantal kolommen en rijen (1–4 × 1–4) en vierkante cellen (`aspect-ratio: 1`).
+- Een CSS-grid met **2–4 kolommen × 2–4 rijen**. De agenda is 2 breed, dus minimaal 2 kolommen. De cellen zijn
+  vierkant en schalen mee met het venster.
 - Tegels staan in de volgorde van de configuratie. `grid-auto-flow: dense` vult gaten op die door de 2x2-agenda ontstaan.
 - De instellingen bewaken de capaciteit: kolommen × rijen cellen, waarbij de agenda 4 cellen telt.
-- Op smalle schermen worden het 2 kolommen. Onder ±400px wordt het 1 kolom en loopt de agenda over de volle breedte.
+- Op smalle schermen worden het 2 kolommen en scrollt de pagina.
 
 | Tegeltype | Grootte | Inhoud | Klikgedrag |
 |-----------|---------|--------|------------|
-| `link`, de gewone tegel | 1x1 | icoon (emoji of afbeelding), titel en optionele kleur | opent het doel: URL, lokaal bestand of pad (zie §6) |
+| `link`, de gewone tegel | 1x1 | icoon (emoji of afbeelding), titel en optionele kleur | opent het doel: URL, onthouden pad of sessiebestand (zie §6) |
 | `links`, de link-tegel | 1x1 | titel met een lijst van ±3–6 links | elke link opent afzonderlijk |
 | `rss` | 1x1 | feednaam met de laatste N items, scrollbaar | een item opent het artikel in een nieuw tabblad |
-| `calendar` | 2x2 | afspraken van vandaag en de komende dagen, gegroepeerd per dag | een afspraak toont details (tijd, locatie) |
+| `calendar` | 2x2 | afspraken van de **komende 30 dagen**, gegroepeerd per dag, scrollbaar | een afspraak toont details (tijd, locatie) |
 
 ### 3.3 Snelle links (`#quickLinksBar`)
 Een optionele horizontale balk onder het grid, aan of uit te zetten. Bij te veel links scrollt hij horizontaal.
@@ -158,25 +163,25 @@ Eén `<script>`, in duidelijk gemarkeerde secties en in deze volgorde:
 
 | # | Sectie | Inhoud / belangrijkste functies |
 |---|--------|----------------------------------|
-| 1 | **Constanten** | `DEFAULT_CONFIG`, `STORAGE_KEY`, `DB_NAME`, `DB_VERSION`, `WMO_CODES` (weercode → icoon + omschrijving), `WINDOWS_TZ` (Windows → IANA-tijdzones), `REFRESH_MS` |
+| 1 | **Constanten** | `DEFAULT_CONFIG`, `STORAGE_KEYS`, `DB_NAME`, `DB_VERSION`, `WMO_CODES` (weercode → icoon + omschrijving), `REFRESH_MS` |
 | 2 | **State** | `config`, `db`, `sessionFiles` (Map tegel-id → File), `timers` |
 | 3 | **Opslag** | `loadData()`, `saveData()`, `initDB()`, `idbGet/idbPut/idbDelete()`, `mergeDefaults()`, `migrateConfig()`, `exportConfig()`, `importConfig()` |
 | 4 | **Rendering** | `renderDashboard()`, `renderHeader()`, `buildTile(tile)` → `buildLinkTile`, `buildLinksTile`, `buildRssTile`, `buildCalendarTile`; `renderQuickLinks()`, `applyTheme()` |
 | 5 | **Events** | `bindEvents()` (event delegation op `.grid`, header en modal), `handleTileClick()`, `toggleTheme()` |
 | 6 | **Databronnen** | `fetchWeather()`, `geocode(query)`, `fetchAndRenderRSS(tile)`, `parseFeed(xml)`, `fetchAndRenderCalendar(tile)`, `parseICS(text)`, `expandEvents(events, from, to)`, `proxyFetch(route, url)` |
 | 7 | **Instellingen** | `openSettings()`, `renderSettingsSection(name)`, `readSettingsForm()`, `saveSettings()`, tegel-editor |
-| 8 | **Hulpfuncties** | `el(tag, attrs, …children)` (veilige DOM-builder), `safeUrl()`, `formatTime()`, `formatDay()`, `uid()`, `debounce()`, `toast()` |
+| 8 | **Hulpfuncties** | `el(tag, attrs, …children)` (veilige DOM-builder), `safeUrl()`, `pathToFileUrl()`, `formatTime()`, `formatDay()`, `uid()`, `debounce()`, `toast()` |
 | 9 | **Init** | `init()` |
 
 ### 4.3 Opstartvolgorde (fast boot)
 
 ```
-<head>  thema uit localStorage → <html data-theme="…">                     (synchroon, vóór paint)
+<head>  themavoorkeur uit localStorage → <html data-theme="…">                (synchroon, vóór paint)
 init()
  1. loadData()          localStorage → JSON.parse → mergeDefaults → migrateConfig     (synchroon)
  2. renderDashboard()   header, grid en quick links direct zichtbaar
  3. bindEvents(); startClock()
- 4. await initDB()      IndexedDB openen: logo-blob, file handles, cache laden
+ 4. await initDB()      IndexedDB openen: logo-blob en cache laden
  5. hydrate()           gecachte weer-, RSS- en agendadata tonen (meteen inhoud, ook offline)
  6. refreshAll()        fetchWeather(), fetchAndRenderRSS() per tegel, fetchAndRenderCalendar()
  7. timers starten; bij visibilitychange pauzeren en bij terugkeer verversen als de data verouderd is
@@ -207,8 +212,8 @@ const DEFAULT_CONFIG = {
   appearance: {
     theme: 'system',                            // 'light' | 'dark' | 'system'
     accentColor: '#2563eb',
-    gridColumns: 4,                             // 1–4
-    gridRows: 4,                                // 1–4
+    gridColumns: 4,                             // 2–4
+    gridRows: 4,                                // 2–4
     tileStyle: 'rounded',                       // 'rounded' | 'square'
     background: { type: 'none', value: '' }     // 'none' | 'color' | 'image' (blob in IndexedDB)
   },
@@ -220,12 +225,12 @@ const DEFAULT_CONFIG = {
   },
   services: { workerUrl: '', workerKey: '' },
   tiles: [
-    { id: 't1', type: 'link', title: 'Outlook', icon: '✉️', color: '',
-      target: { kind: 'url', value: 'https://outlook.office.com' } },
-    { id: 't2', type: 'links', title: 'Werk',
+    { id: 't1', type: 'link', title: 'Outlook', icon: '✉️', color: '', newTab: false,
+      target: { kind: 'url', value: 'https://outlook.office.com' } },   // kind: 'url' | 'path' | 'session-file'
+    { id: 't2', type: 'links', title: 'Microsoft 365',
       links: [{ label: 'Teams', url: 'https://teams.microsoft.com' }] },
-    { id: 't3', type: 'rss', title: 'Nieuws', feedUrl: 'https://feeds.nos.nl/nosnieuwsalgemeen', maxItems: 6 },
-    { id: 't4', type: 'calendar', title: 'Agenda', icsUrl: '', daysAhead: 7 }
+    { id: 't3', type: 'rss', title: 'Nieuws', feedUrl: 'https://feeds.nos.nl/nosnieuwsalgemeen', maxItems: 8 },
+    { id: 't4', type: 'calendar', title: 'Agenda', icsUrl: '', daysAhead: 30 }
   ],
   quickLinks: {
     enabled: true,
@@ -239,11 +244,15 @@ const DEFAULT_CONFIG = {
 | Opslag | Sleutel / store | Inhoud | Waarom hier |
 |--------|-----------------|--------|-------------|
 | `localStorage` | `lp:config` | de volledige config als JSON (klein, < 50 KB) | synchroon leesbaar, dus de pagina staat er meteen |
-| `localStorage` | `lp:theme` | effectief thema | leesbaar door het `<head>`-script vóór de paint |
+| `localStorage` | `lp:theme` | themavoorkeur (`light` / `dark` / `system`) | leesbaar door het `<head>`-script vóór de paint |
 | IndexedDB `landingspagina` | `kv` | back-up van de config | herstel als localStorage leeg of corrupt is |
 | | `assets` | logo- en achtergrondafbeelding (Blob) | binaire data hoort niet in localStorage (limiet ±5 MB, alleen strings) |
-| | `handles` | `FileSystemFileHandle` per tegel | handles zijn alleen in IndexedDB op te slaan |
 | | `cache` | laatste weer-, RSS- en ICS-resultaat + tijdstempel | direct tonen bij het opstarten en offline |
+
+**Opslag bij een lokaal bestand.** Getest in Chromium, de engine van Edge: `localStorage` en IndexedDB werken
+op `file://`, en **alle lokale HTML-bestanden delen één opslag**. Het bestand verplaatsen of vervangen door een
+nieuwe versie behoudt dus de instellingen. De keerzijde: "Browsegegevens wissen → Cookies en andere sitegegevens"
+in Edge wist ook het dashboard. Daarom zijn er een export als back-up en `navigator.storage.persist()`.
 
 ### 5.3 Regels
 - **Laden:** eerst `localStorage`. Is die leeg of corrupt, dan de config uit IndexedDB (na `initDB`). Anders `DEFAULT_CONFIG`.
@@ -252,26 +261,35 @@ const DEFAULT_CONFIG = {
 - **Opslaan:** `saveData()` schrijft synchroon naar localStorage en daarna asynchroon naar IndexedDB. Een vol
   geheugen (`QuotaExceededError`) wordt opgevangen en gemeld met een toast.
 - **Persistentie:** eenmalig `navigator.storage.persist()` aanvragen, zodat de browser de data niet zelf opruimt.
-- **Export/import:** een JSON-bestand, met het logo als data-URL. File handles kunnen niet mee. Bij het exporteren
-  waarschuwen we dat het bestand de ICS-URL en de Worker-sleutel bevat.
+- **Export/import:** een JSON-bestand, met het logo als data-URL. Bij het exporteren waarschuwen we dat het
+  bestand de agenda-URL en de Worker-sleutel bevat.
 
 ---
 
 ## 6. Tegelnavigatie en lokale bestanden
 
+Omdat het dashboard zelf als lokaal bestand draait, mag het **direct naar andere lokale bestanden linken**. Dat
+heb ik getest: een `file:///`-link vanaf een `file:///`-pagina opent gewoon. Vanaf een website zou de browser
+dit blokkeren.
+
 Een `link`-tegel heeft een `target.kind`:
 
-| `kind` | Wat | Klikgedrag | Browsers |
-|--------|-----|------------|----------|
-| `url` | http(s)- of mailto-adres | gewone `<a href>`. Nieuw tabblad is instelbaar per tegel (`rel="noopener"`). | alle |
-| `session-file` | bestand gekozen met `<input type="file">` | `URL.createObjectURL(file)` opent in een nieuw tabblad. **Na herladen opnieuw kiezen**, waarbij de tegel "Bestand opnieuw kiezen" toont. | alle |
-| `file-handle` | onthouden bestand via de File System Access API | handle uit IndexedDB → `requestPermission()` (één klik bevestigen) → `getFile()` → object-URL | alleen Chrome en Edge |
-| `path` | tekstpad (`C:\…`, `\\server\share\…`, `file:///…`) | draait de pagina zelf via `file://`, dan een directe link. Anders kopiëren naar het klembord met de toast "Pad gekopieerd, plak het in Verkenner". | alle |
+| `kind` | Wat | Klikgedrag |
+|--------|-----|------------|
+| `url` | http(s)- of mailto-adres | gewone `<a href>`. Zelfde of nieuw tabblad is instelbaar per tegel. |
+| `path` | **onthouden pad**: `C:\Users\…\rapport.pdf`, een map, of `\\server\share\…` | `pathToFileUrl()` zet het pad om naar `file:///C:/Users/…` (spaties en tekens gecodeerd, UNC → `file://server/share/…`) en opent het als gewone link |
+| `session-file` | **bestand tijdens de sessie**: gekozen via de bestandskiezer | `URL.createObjectURL(file)` opent in een nieuw tabblad. Na herladen toont de tegel "Bestand opnieuw kiezen". |
 
-**Belangrijke beperking:** een pagina op `https://` mag niet naar `file://` navigeren, dat blokkeert de browser.
-Daardoor hangt de waarde van `path`-tegels af van waar de pagina draait (zie open vraag V1). Een `file-handle`
-werkt overal in Chrome en Edge, maar opent een **kopie** van het bestand in de browser (prima voor pdf's,
-afbeeldingen en tekst). Het start geen Word of Excel.
+**Wat Edge doet met een lokaal pad** (controleren we in fase 3 op Windows):
+- **pdf, afbeeldingen, tekst en html** openen in Edge.
+- **Een map** toont Edge als een klikbaar mappenoverzicht in de browser, niet in Verkenner.
+- **Office-bestanden** (.docx, .xlsx, .pptx) opent Edge niet zelf; die worden als download aangeboden. In fase 3
+  onderzoeken we of de Office-URI's (`ms-word:ofe|u|…`, `ms-excel:…`, `ms-powerpoint:…`) zo'n bestand direct in
+  Word, Excel of PowerPoint kunnen openen. Lukt dat niet, dan is "pad kopiëren" de fallback.
+- **Pad kopiëren** is altijd als tweede actie beschikbaar (knopje op de tegel), om het pad in Verkenner te plakken.
+
+De File System Access API (bestanden "onthouden" via een handle) is niet nodig, omdat directe padlinks werken. Die
+laten we weg.
 
 ---
 
@@ -297,24 +315,28 @@ afbeeldingen en tekst). Het start geen Word of Excel.
   HTML uit de feed wordt nooit gerenderd.
 - Elke RSS-tegel heeft één feed. Verversen gebeurt elke 15 minuten.
 
-### 7.3 Outlook-agenda (ICS, via de Worker)
-- **Bron:** Outlook → Instellingen → Agenda → Gedeelde agenda's → *Een agenda publiceren* → de ICS-link
-  (`https://outlook.office365.com/owa/calendar/…/calendar.ics`). Deze URL werkt als een wachtwoord, dus hij staat
-  alleen lokaal en gaat alleen naar de eigen Worker.
-- **`parseICS()`** (eigen, compacte parser voor wat Outlook produceert):
+### 7.3 Agenda (Google Agenda-ICS, via de Worker)
+- **Keten:** Outlook → (jouw synchronisatie) → Google Agenda → geheime iCal-link → Worker → dashboard.
+  Wijzigingen in Outlook verschijnen dus pas nadat ze naar Google zijn gesynchroniseerd.
+- **Bron:** Google Agenda → Instellingen → (jouw agenda) → *Agenda integreren* → **Geheim adres in iCal-indeling**
+  (`https://calendar.google.com/calendar/ical/…/private-…/basic.ics`). Deze URL werkt als een wachtwoord, dus hij
+  staat alleen lokaal en gaat alleen naar de eigen Worker.
+- **`parseICS()`** is een eigen, compacte, generieke parser:
   - regels *unfolden*, properties met parameters parsen, tekst unescapen (`\,` `\;` `\n`);
   - per `VEVENT`: `UID`, `SUMMARY`, `LOCATION`, `DTSTART`, `DTEND`/`DURATION`, `RRULE`, `EXDATE`,
     `RECURRENCE-ID` en `STATUS`. Geannuleerde afspraken worden overgeslagen.
-  - datumvormen: UTC (`…Z`), met `TZID` en hele dag (`VALUE=DATE`);
-  - Outlook gebruikt **Windows-tijdzonenamen** (`W. Europe Standard Time`). `WINDOWS_TZ` zet die om naar IANA,
-    en `Intl` rekent de wandkloktijd om naar UTC.
-- **`expandEvents()`** werkt herhalingen uit, alleen binnen het venster [vandaag, vandaag + `daysAhead`]:
+  - datumvormen: UTC (`…Z`), met `TZID` en hele dag (`VALUE=DATE`). Google gebruikt IANA-tijdzones
+    (`Europe/Amsterdam`), die `Intl` direct begrijpt.
+- **`expandEvents()`** werkt herhalingen uit, alleen binnen het venster [vandaag, vandaag + 30 dagen]:
   - `FREQ` DAILY, WEEKLY, MONTHLY en YEARLY met `INTERVAL`, `COUNT` en `UNTIL`;
   - `BYDAY` (ook `1MO` en `-1FR`), `BYMONTHDAY` en `BYMONTH`;
   - `EXDATE` en verplaatste exemplaren (`RECURRENCE-ID`) worden toegepast.
-- **Weergave (2x2):** groepen "Vandaag", "Morgen" en daarna per weekdag. Elke afspraak toont tijd (of "Hele dag"),
-  titel en locatie, en de lopende afspraak wordt gemarkeerd. Verversen gebeurt elke 10 minuten.
-- Dit is het **grootste technische risico** (zie §11). We testen het tegen een echte Outlook-export.
+- **Bestandsgrootte:** de Google-feed bevat je hele agendageschiedenis en kan enkele MB's groot zijn. We parsen
+  het bestand één keer per verversing. De cache bewaart alleen de uitgewerkte afspraken van het venster, niet het
+  ruwe bestand.
+- **Weergave (2x2):** een scrollbare lijst met groepen "Vandaag", "Morgen" en daarna per dag ("wo 8 okt"). Elke
+  afspraak toont tijd (of "Hele dag"), titel en locatie, en de lopende afspraak wordt gemarkeerd. Verversen
+  gebeurt elke 15 minuten.
 
 ### 7.4 Verversen en cache (gemeenschappelijk)
 - Elke bron werkt volgens *stale-while-revalidate*: eerst de cache uit IndexedDB tonen, dan op de achtergrond
@@ -333,20 +355,25 @@ Eén Worker met twee routes. Hij geeft bestanden door en voegt CORS-headers toe,
 | Route | Doel | Extra regels |
 |-------|------|--------------|
 | `GET /rss?url=…` | feed ophalen | alleen `http(s)`, max. 2 MB, timeout 10 s, cache 15 min |
-| `GET /ics?url=…` | agenda ophalen | **alleen hosts op de allowlist** (`outlook.office365.com`, `outlook.live.com`, aanvulbaar), max. 5 MB, cache 10 min |
+| `GET /ics?url=…` | agenda ophalen | **alleen hosts op de allowlist** (`calendar.google.com`, aanvulbaar), max. 10 MB, timeout 15 s, cache 10 min |
+| `GET /ping` | "Verbinding testen" in de instellingen | controleert alleen de sleutel |
 | `OPTIONS *` | CORS-preflight | |
 
 **Beveiliging, zodat het geen open proxy wordt**
-- Een gedeelde sleutel: de header `X-Dashboard-Key` moet gelijk zijn aan het Worker-secret `DASHBOARD_KEY`.
-- `Access-Control-Allow-Origin` staat alleen origins uit `ALLOWED_ORIGINS` toe. Let op: een pagina op `file://`
-  stuurt `Origin: null`, en dan beschermt alleen de sleutel.
-- Geen cookies of credentials doorsturen, en geen URL's loggen.
-- Gratis Workers-plan: 100.000 requests per dag. Wij zitten op ±200 per dag.
+- Een pagina die als lokaal bestand draait, stuurt `Origin: null`. Een origin-check beschermt dan niets, dus de
+  **gedeelde sleutel** is de echte beveiliging: de header `X-Dashboard-Key` moet gelijk zijn aan het Worker-secret
+  `DASHBOARD_KEY`.
+- De Worker antwoordt met `Access-Control-Allow-Origin: *`. Er worden geen cookies of credentials gebruikt.
+- Daarnaast: een host-allowlist voor ICS, groottelimieten, timeouts, en geen URL's loggen.
+- Gratis Workers-plan: 100.000 requests per dag. Wij zitten op ±250 per dag.
 
 **Bestanden:** `src/index.js` (ES-module, `export default { fetch }`), `wrangler.toml` (`name`, `main`,
-`compatibility_date`, `[vars] ALLOWED_ORIGINS`) en `README.md` met de stappen `npm create cloudflare` /
-`wrangler deploy` / `wrangler secret put DASHBOARD_KEY`. In het dashboard vul je daarna bij *Koppelingen* de
-Worker-URL en de sleutel in.
+`compatibility_date`) en een `README.md` met twee deploy-routes:
+1. **Zonder installatie:** Cloudflare-dashboard → Workers & Pages → Worker aanmaken → code plakken → secret
+   `DASHBOARD_KEY` toevoegen.
+2. **Met Node:** `wrangler deploy` en `wrangler secret put DASHBOARD_KEY`.
+
+Daarna vul je in het dashboard bij *Koppelingen* de Worker-URL (`https://….workers.dev`) en de sleutel in.
 
 ---
 
@@ -362,13 +389,12 @@ Worker-URL en de sleutel in.
   - Zichtbare `:focus-visible`, en `aria-label` op icoonknoppen.
   - Contrast AA in beide thema's, en `prefers-reduced-motion` wordt gerespecteerd.
 - **Performance**
-  - Eerste render zonder netwerk en zonder externe scripts of fonts (systeemfont).
+  - Eerste render zonder netwerk en zonder externe scripts of fonts (systeemfont, Segoe UI op Windows).
   - Streefgrootte voor `index.html` is minder dan ±150 KB.
-- **Browsers:** de nieuwste Chrome en Edge zijn primair (alle functies). Firefox en Safari werken ook, maar zonder
-  onthouden bestanden (`file-handle`).
+- **Browser:** Microsoft Edge op Windows. Automatisch testen gebeurt in Chromium, dezelfde engine.
 - **Testen:**
-  - per fase een handmatige checklist (licht/donker, mobiel/desktop, leeg/vol grid, offline);
-  - in fase 9 Playwright-smoketests met fixtures, waaronder een Outlook-ICS met herhalingen, uitzonderingen en
+  - per fase een handmatige checklist (licht/donker, smal/breed venster, leeg/vol grid, offline);
+  - in fase 9 Playwright-smoketests met fixtures, waaronder een Google-ICS met herhalingen, uitzonderingen en
     hele-dag-afspraken.
 
 ---
@@ -379,16 +405,16 @@ Elke fase levert een werkend `index.html` op en wordt apart gecommit. Grootte: S
 
 | Fase | Onderdeel | Oplevering | Klaar wanneer… | Grootte |
 |------|-----------|------------|----------------|---------|
-| **0** | Plan & keuzes | dit document; open vragen beantwoord | keuzes V1–V5 vastgelegd | S |
-| **1** | Skelet & thema | HTML-structuur, CSS-variabelen, header, grid met statische `DEFAULT_CONFIG`-tegels, klok, themaknop, responsive layout | pagina toont header + grid + quick links; thema wisselt zonder flits; goed op mobiel en desktop | M |
+| **0** | Plan & keuzes | dit document | keuzes V1–V5 vastgelegd ✅ | S |
+| **1** | Skelet & thema | HTML-structuur, CSS-variabelen, header, grid met `DEFAULT_CONFIG`-tegels, klok, themaknop, modal-skelet, responsive layout | pagina toont header + grid + quick links; thema wisselt zonder flits en blijft bewaard; goed bij smal en breed venster | M |
 | **2** | Opslag | `loadData`/`saveData`, `initDB`, `mergeDefaults`, `migrateConfig`, `persist()`, export/import | wijzigingen overleven herladen; corrupte localStorage → herstel uit IndexedDB; export → import geeft identiek dashboard | M |
-| **3** | Tegels & navigatie | `link` (url / session-file / file-handle / path), `links`-tegel, quick links-balk, grid-capaciteit | alle vier doeltypen werken zoals in §6 (inclusief fallbacks); toetsenbordbediening werkt | M |
+| **3** | Tegels & navigatie | `link` (url / path / session-file), pad kopiëren, Office-URI-onderzoek, `links`-tegel, quick links-balk, grid-capaciteit | alle doeltypen werken in Edge zoals in §6; toetsenbordbediening werkt | M |
 | **4** | Instellingenmodal | zijbalk + alle categorieën uit §3.4, tegel-editor (toevoegen/bewerken/verwijderen/volgorde), validatie, opslaan/annuleren | alles uit `DEFAULT_CONFIG` is via de UI aan te passen zonder code te wijzigen | L |
 | **5** | Weer | `fetchWeather`, `geocode` in de instellingen, `WMO_CODES`, cache | plaats zoeken → kiezen → weer in de header; offline toont de laatste waarde | S |
-| **6** | Cloudflare Worker | `worker/` met `/rss` + `/ics`, sleutel, allowlist, CORS, cache, README; "Verbinding testen" in de instellingen | Worker gedeployed; testknop groen; verzoek zonder sleutel → 401 | S |
+| **6** | Cloudflare Worker | `worker/` met `/rss`, `/ics` en `/ping`, sleutel, allowlist, CORS, README; "Verbinding testen" in de instellingen | Worker gedeployed; testknop groen; verzoek zonder sleutel → 401 | S |
 | **7** | RSS-tegel | `fetchAndRenderRSS`, `parseFeed` (RSS 2.0 / Atom / RDF), verversen, foutstatus | drie verschillende echte feeds tonen correct; foute URL geeft nette melding | M |
-| **8** | Agenda-tegel (2x2) | `parseICS`, `WINDOWS_TZ`, `expandEvents`, weergave per dag | echte Outlook-agenda klopt 7 dagen vooruit, inclusief herhalingen, uitzonderingen, hele-dag-afspraken en zomer-/wintertijd | L |
-| **9** | Afwerking | toegankelijkheid, foutstatussen, lege staten, CSP, Playwright-smoketests, README, hosting inrichten | checklist §9 afgevinkt; dashboard ingesteld als startpagina | M |
+| **8** | Agenda-tegel (2x2) | `parseICS`, `expandEvents`, weergave per dag | jouw Google-agenda klopt 30 dagen vooruit, inclusief herhalingen, uitzonderingen, hele-dag-afspraken en zomer-/wintertijd | L |
+| **9** | Afwerking | toegankelijkheid, foutstatussen, lege staten, CSP, Playwright-smoketests, README | checklist §9 afgevinkt; dashboard draait als Edge-startpagina | M |
 
 De volgorde is zo gekozen dat er na fase 3 al een bruikbaar startscherm is. Fase 5 (weer) hangt niet af van de
 Worker en kan eventueel naar voren.
@@ -399,34 +425,40 @@ Worker en kan eventueel naar voren.
 
 | Risico | Kans | Impact | Maatregel |
 |--------|------|--------|-----------|
-| ICS-complexiteit (herhalingen, Windows-tijdzones, uitzonderingen) | hoog | hoog | parser beperken tot wat Outlook gebruikt; testen met een echte export als fixture. Lukt dat niet, dan plan B: de Worker zet ICS om naar JSON met `ical.js`. |
-| `file://`-links geblokkeerd vanaf een https-pagina | zeker (bij hosting) | middel | fallback via klembord; `file-handle` voor Chrome/Edge; hostingkeuze (V1) bepaalt de aanpak |
-| Data per origin: verhuizen van `file://` naar een website "verliest" de config | middel | middel | export/import vanaf fase 2 |
-| De browser ruimt opslag op | laag | hoog | `navigator.storage.persist()` + export als back-up |
-| De Worker wordt misbruikt als open proxy | middel | middel | sleutel, origin-check, host-allowlist voor ICS, groottelimiet |
+| ICS-complexiteit (herhalingen, uitzonderingen, zomer-/wintertijd) | middel | hoog | Google levert nette IANA-tijdzones; we testen met een export van jouw agenda als fixture. Plan B: de Worker zet ICS om naar JSON met `ical.js`. |
+| Google-feed is groot (volledige geschiedenis), dus het parsen is traag | middel | laag | parsen buiten de eerste render, cache van alleen het venster. Plan B: de Worker filtert op het venster. |
+| Office-bestanden worden gedownload in plaats van geopend | zeker | middel | Office-URI's onderzoeken (fase 3), anders "pad kopiëren" |
+| Browsegegevens wissen in Edge wist ook het dashboard | laag | hoog | `navigator.storage.persist()` + export als back-up; melding in de instellingen |
+| Vertraging Outlook → Google | zeker | laag | geaccepteerd; buiten het dashboard |
+| De Worker wordt misbruikt als open proxy | middel | middel | sleutel, host-allowlist voor ICS, groottelimiet, timeouts |
 | Het bestand wordt groot en onoverzichtelijk | middel | laag | vaste secties (§4.2), kleine functies, consequente naamgeving |
 | Een feed of API ligt eruit | middel | laag | cache tonen + foutstatus per tegel |
 
 ---
 
-## 12. Open vragen (met voorlopige keuze)
+## 12. Beslissingen en open vragen
+
+**Beslist**
+
+| # | Vraag | Beslissing |
+|---|-------|------------|
+| V1 | Waar draait het dashboard? | **Lokaal bestand** (dubbelklik in Verkenner), ingesteld als **startpagina in Edge**. Padlinks werken daardoor direct (§6). |
+| V2 | Welke browser? | **Microsoft Edge** |
+| V3 | Gewone tegel = één doel, link-tegel = lijstje links? | **Ja** |
+| V4 | Cloudflare-account? | **Ja, aanwezig.** Ik schrijf de Worker + instructies, jij deployt. |
+| V5 | Agenda en periode? | **Google Agenda** (Outlook wordt daarheen gesynchroniseerd), **30 dagen** vooruit |
+
+**Nog open** (beslissen we tijdens het bouwen; tot dan geldt de voorlopige keuze)
 
 | # | Vraag | Voorlopige keuze |
 |---|-------|------------------|
-| **V1** | Waar draait het dashboard: lokaal als bestand (`file://`), via GitHub Pages, of elders? Dit bepaalt hoe pad-tegels werken en welke origin de Worker toestaat. | **GitHub Pages** (de repo staat er al). Pad-tegels kopiëren dan naar het klembord. |
-| **V2** | Welke browser(s) gebruik je? | **Chrome/Edge** primair. Alleen daar werken onthouden bestanden. |
-| **V3** | Klopt de interpretatie "gewone tegel = één doel" en "link-tegel = tegel met een lijstje links"? | Ja, zoals in §3.2 |
-| **V4** | Heb je al een Cloudflare-account en een Worker? Zo ja: welke URL? | Ik schrijf de Worker + deploy-instructies; jij deployt met `wrangler`. |
-| **V5** | Eén ICS-agenda of meerdere (bijvoorbeeld werk + privé in één tegel)? Hoeveel dagen vooruit? | Eén agenda per tegel, 7 dagen |
 | V6 | Iconen voor tegels: emoji, eigen afbeelding, of automatisch het favicon van de site? (Een favicon-dienst stuurt de domeinnamen naar een derde partij.) | Emoji + optionele afbeelding-URL; favicon is opt-in |
 | V7 | Grid: volstaat de volgorde-met-pijltjes, of wil je drag & drop en vaste posities? | Pijltjes in v1, drag & drop later |
-| V8 | Moet het thema ook "systeem" (volgt Windows/macOS) kunnen volgen? | Ja: standaard "systeem", de knop wisselt licht ↔ donker |
+| V8 | Moet het thema ook "systeem" (volgt Windows) kunnen volgen? | Ja: standaard "systeem", de knop wisselt licht ↔ donker |
 
 ---
 
 ## 13. Volgende stap
 
-1. Open vragen **V1–V5** beantwoorden. De andere kunnen tijdens het bouwen.
-2. **Fase 1** bouwen: het skelet van `index.html` met header, grid, quick links, thema en klok, op basis van
-   `DEFAULT_CONFIG`.
-3. Na elke fase samen kijken en waar nodig het plan bijstellen. Dit document wordt bijgewerkt als keuzes veranderen.
+1. **Fase 1** bouwen: het skelet van `index.html`.
+2. Na elke fase samen kijken en waar nodig het plan bijstellen. Dit document wordt bijgewerkt als keuzes veranderen.
