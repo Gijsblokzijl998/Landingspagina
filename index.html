@@ -39,7 +39,7 @@
       --radius-sm: 12px;
       --gap: 16px;
       --page-pad: clamp(16px, 4vw, 40px);
-      --chrome-h: 210px; /* header + snelle links + marges: begrenst de tegelhoogte */
+      --chrome-h: 160px; /* kopbalk + voetbalk + marges: begrenst de tegelhoogte */
       --font: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
       color-scheme: light;
     }
@@ -91,24 +91,23 @@
       display: inline-grid;
       place-items: center;
       flex: none;
-      width: 40px;
-      height: 40px;
+      width: 34px;
+      height: 34px;
       padding: 0;
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      background: var(--surface);
+      border: 0;
+      border-radius: 8px;
+      background: none;
       color: var(--text-muted);
-      box-shadow: var(--shadow);
       cursor: pointer;
       transition: color .15s, background-color .15s;
     }
     .icon-btn:hover { color: var(--text); background: var(--surface-hover); }
     .icon-btn svg {
-      width: 20px;
-      height: 20px;
+      width: 18px;
+      height: 18px;
       fill: none;
       stroke: currentColor;
-      stroke-width: 2;
+      stroke-width: 1.5;
       stroke-linecap: round;
       stroke-linejoin: round;
     }
@@ -116,13 +115,7 @@
     [data-background="image"] body {
       background: var(--bg) var(--page-bg-image) center / cover no-repeat fixed;
     }
-    /* Op een foto blijven titel en klok leesbaar dankzij een halfdoorzichtige ondergrond. */
-    [data-background="image"] :is(.header-center, .clock, .weather) {
-      padding: 6px 14px;
-      border-radius: 12px;
-      background: color-mix(in srgb, var(--surface) 82%, transparent);
-      backdrop-filter: blur(8px);
-    }
+
 
     .icon {
       flex: none;
@@ -130,7 +123,7 @@
       height: 16px;
       fill: none;
       stroke: currentColor;
-      stroke-width: 2;
+      stroke-width: 1.5;
       stroke-linecap: round;
       stroke-linejoin: round;
     }
@@ -155,7 +148,7 @@
     .muted { color: var(--text-muted); }
 
     .toast {
-      inset: auto auto 24px 50%;
+      inset: auto auto 64px 50%; /* boven de voetbalk */
       max-width: min(480px, 100vw - 32px);
       margin: 0;
       padding: 10px 16px;
@@ -175,45 +168,58 @@
     /* ======================================================================
        Header
        ====================================================================== */
+    /* Kop- en voetbalk: rustig grijs, kleine tekst, met een scheidingslijn naar de inhoud. */
+    .site-header,
+    .site-footer {
+      position: sticky;
+      z-index: 5;
+      background: color-mix(in srgb, var(--surface) 90%, transparent);
+      backdrop-filter: blur(10px);
+    }
+
     .site-header {
+      top: 0;
       display: grid;
-      grid-template-columns: 1fr auto 1fr;
+      grid-template-columns: auto 1fr auto;
       grid-template-areas: "left center right";
       align-items: center;
-      gap: 16px;
-      padding: 18px var(--page-pad) 14px;
+      gap: 14px;
+      min-height: 52px;
+      padding: 8px var(--page-pad);
+      border-bottom: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: .8rem;
     }
     .header-left { grid-area: left; display: flex; align-items: center; min-width: 0; }
+    .header-left:has(.logo[hidden]) { display: none; }
     .header-center {
       grid-area: center;
       display: flex;
       flex-wrap: wrap;
       align-items: baseline;
-      justify-content: center;
-      column-gap: 14px;
+      column-gap: 12px;
       min-width: 0;
     }
     .header-right {
       grid-area: right;
-      justify-self: end;
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 6px;
     }
 
-    .logo { display: block; max-width: 160px; max-height: 44px; object-fit: contain; }
+    .logo { display: block; max-width: 140px; max-height: 30px; object-fit: contain; }
 
     .page-title {
-      font-size: clamp(1.25rem, 1rem + 1vw, 1.75rem);
-      font-weight: 650;
-      letter-spacing: -.01em;
-      line-height: 1.2;
+      color: var(--text);
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: -.005em;
+      line-height: 1.3;
     }
     .welcome {
-      padding-left: 14px;
+      padding-left: 12px;
       border-left: 1px solid var(--border);
-      color: var(--text-muted);
-      font-size: clamp(.95rem, .85rem + .4vw, 1.15rem);
+      font-size: .85rem;
     }
 
     .weather {
@@ -222,28 +228,31 @@
       gap: 8px;
       padding: 4px 8px;
       border: 0;
-      border-radius: 12px;
+      border-radius: 8px;
       background: none;
-      line-height: 1.15;
+      color: inherit;
+      line-height: 1.2;
       text-align: right;
       cursor: pointer;
     }
-    .weather:hover { background: var(--surface-hover); }
+    .weather:hover { background: var(--surface-hover); color: var(--text); }
     .weather.is-stale { opacity: .55; }
-    .weather-icon { font-size: 1.7rem; line-height: 1; }
+    .weather-icon { display: grid; }
+    .weather-icon .icon { width: 22px; height: 22px; }
     .weather-text { display: flex; flex-direction: column; align-items: flex-end; }
-    .weather-temp { font-size: 1.35rem; font-weight: 600; font-variant-numeric: tabular-nums; }
-    .weather-place { max-width: 140px; overflow: hidden; color: var(--text-muted); font-size: .8rem; white-space: nowrap; text-overflow: ellipsis; }
+    .weather-temp { color: var(--text); font-size: .9rem; font-weight: 500; font-variant-numeric: tabular-nums; }
+    .weather-place { max-width: 140px; overflow: hidden; font-size: .72rem; white-space: nowrap; text-overflow: ellipsis; }
 
     .clock {
       display: flex;
       flex-direction: column;
       align-items: flex-end;
-      margin-right: 4px;
-      line-height: 1.15;
+      padding: 0 8px;
+      border-left: 1px solid var(--border);
+      line-height: 1.2;
     }
-    .clock-time { font-size: 1.35rem; font-weight: 600; font-variant-numeric: tabular-nums; }
-    .clock-date { display: block; font-size: .8rem; color: var(--text-muted); }
+    .clock-time { color: var(--text); font-size: .9rem; font-weight: 500; font-variant-numeric: tabular-nums; }
+    .clock-date { display: block; font-size: .72rem; }
     .clock-date::first-letter { text-transform: uppercase; }
 
     /* De themaknop toont wat je krijgt: een maan in licht thema, een zon in donker thema. */
@@ -254,9 +263,9 @@
       .site-header {
         grid-template-columns: auto 1fr;
         grid-template-areas: "left right" "center center";
-        row-gap: 12px;
+        row-gap: 6px;
       }
-      .header-center { justify-content: flex-start; }
+      .header-left:has(.logo[hidden]) { display: flex; }
     }
 
     @media (max-width: 480px) {
@@ -272,8 +281,7 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 24px;
-      padding: 8px var(--page-pad) 32px;
+      padding: 20px var(--page-pad) 24px;
     }
 
     .grid {
@@ -332,7 +340,7 @@
     .tile--link:not(.is-invalid):hover {
       transform: translateY(-2px);
       box-shadow: var(--shadow-hover);
-      border-color: color-mix(in srgb, var(--tile-color, var(--accent)) 45%, var(--border));
+      border-color: color-mix(in srgb, var(--tile-color, var(--text-muted)) 45%, var(--border));
     }
     .tile--link.is-invalid { opacity: .55; }
 
@@ -398,15 +406,15 @@
       width: 56px;
       height: 56px;
       border-radius: var(--radius-sm);
-      background: color-mix(in srgb, var(--tile-color, var(--accent)) 14%, transparent);
-      font-size: 30px;
+      background: color-mix(in srgb, var(--tile-color, var(--text-muted)) 11%, transparent);
+      color: var(--tile-color, var(--text-muted));
+      font-size: 28px;
       line-height: 1;
     }
-    .tile-icon--letter {
-      color: var(--tile-color, var(--accent-text));
-      font-size: 26px;
-      font-weight: 700;
-    }
+    .tile-icon .icon { width: 28px; height: 28px; }
+    .tile-icon--letter { font-size: 24px; font-weight: 600; }
+    /* Emoji's ook in grijstinten, passend bij de lijniconen. */
+    .emoji-icon { filter: grayscale(1); }
 
     .tile-title {
       display: -webkit-box;
@@ -429,6 +437,7 @@
       font-weight: 600;
     }
     .tile-heading span:last-child { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .tile-heading .icon { width: 15px; height: 15px; }
 
     .tile-body {
       flex: 1;
@@ -462,10 +471,20 @@
       height: 16px;
       border-radius: 3px;
       filter: grayscale(1);
-      opacity: .7;
+      opacity: .8;
       transition: filter .2s, opacity .2s;
     }
     a:is(:hover, :focus-visible) > .favicon { filter: none; opacity: 1; }
+    /* Laatste terugval als geen enkele bron een favicon levert: de eerste letter van het domein. */
+    .favicon--letter {
+      display: inline-grid;
+      place-items: center;
+      background: var(--surface-hover);
+      color: var(--text-muted);
+      font-size: 10px;
+      font-weight: 600;
+      line-height: 1;
+    }
     .tile-list .is-invalid { color: var(--text-muted); text-decoration: line-through; }
 
     .tile-state {
@@ -484,11 +503,14 @@
     /* ======================================================================
        Snelle links
        ====================================================================== */
+    .site-footer {
+      bottom: 0;
+      border-top: 1px solid var(--border);
+    }
     .quick-links {
       display: flex;
-      gap: 8px;
-      max-width: 100%;
-      padding: 4px;
+      gap: 6px;
+      padding: 8px var(--page-pad);
       overflow-x: auto;
       scrollbar-width: thin;
       scrollbar-color: var(--border) transparent;
@@ -500,18 +522,17 @@
       flex: none;
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      padding: 7px 14px;
+      gap: 7px;
+      padding: 5px 12px;
       border: 1px solid var(--border);
       border-radius: 999px;
-      background: var(--surface);
-      box-shadow: var(--shadow);
-      font-size: .875rem;
-      font-weight: 500;
+      background: var(--bg);
+      color: var(--text-muted);
+      font-size: .8rem;
       text-decoration: none;
       transition: color .15s, border-color .15s;
     }
-    .quick-link:hover { border-color: var(--accent); color: var(--accent-text); }
+    .quick-link:hover { border-color: color-mix(in srgb, var(--text-muted) 60%, var(--border)); color: var(--text); }
 
     /* ======================================================================
        Instellingenmodal
@@ -641,6 +662,29 @@
       object-fit: contain;
     }
 
+    .icon-picker {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
+      gap: 4px;
+      max-width: 560px;
+    }
+    .icon-choice {
+      display: grid;
+      place-items: center;
+      height: 38px;
+      padding: 0;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+    .icon-choice .icon { width: 20px; height: 20px; }
+    .icon-choice:hover { color: var(--text); border-color: var(--border); }
+    .icon-choice[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-text); }
+    .icon-choice--none { font-size: .7rem; }
+    .item-icon .icon { width: 18px; height: 18px; vertical-align: middle; }
+
     .place-search { display: grid; gap: 8px; }
     .place-results { display: grid; gap: 4px; }
     .place-option {
@@ -668,7 +712,7 @@
       border-radius: 10px;
       background: var(--bg);
     }
-    .item-icon { flex: none; width: 28px; color: var(--accent-text); font-size: 1.15rem; font-weight: 700; text-align: center; }
+    .item-icon { flex: none; width: 28px; color: var(--text-muted); font-size: 1.05rem; font-weight: 600; text-align: center; }
     .item-main {
       flex: 1;
       display: grid;
@@ -767,7 +811,7 @@
 
     <div class="header-right">
       <button id="weatherWidget" class="weather" type="button" hidden>
-        <span class="weather-icon" aria-hidden="true"></span>
+        <span class="weather-icon"></span>
         <span class="weather-text">
           <span class="weather-temp"></span>
           <span class="weather-place"></span>
@@ -797,8 +841,11 @@
 
   <main id="mainContainer">
     <section id="tileGrid" class="grid" aria-label="Tegels"></section>
-    <nav id="quickLinksBar" class="quick-links" aria-label="Snelle links"></nav>
   </main>
+
+  <footer id="siteFooter" class="site-footer">
+    <nav id="quickLinksBar" class="quick-links" aria-label="Snelle links"></nav>
+  </footer>
 
   <dialog id="settingsModal" class="settings-modal" aria-labelledby="settingsTitle">
     <div class="settings">
@@ -838,44 +885,48 @@
     const DB_VERSION = 1;
     const DB_STORES = ['kv', 'assets', 'cache'];   // kv: config-back-up, assets: afbeeldingen, cache: externe data
 
-    const CONFIG_VERSION = 1;
+    const CONFIG_VERSION = 2;
     const EXPORT_APP_ID = 'landingspagina';
 
     const WEATHER_API = 'https://api.open-meteo.com/v1/forecast';
     const GEOCODING_API = 'https://geocoding-api.open-meteo.com/v1/search';
-    const FAVICON_SERVICE = 'https://www.google.com/s2/favicons';
+    const FAVICON_SOURCES = [
+      host => `https://icons.duckduckgo.com/ip3/${host}.ico`,
+      host => `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=32`,
+      host => `https://${host}/favicon.ico`
+    ];
     const WEATHER_REFRESH_MS = 30 * 60_000;
 
     // WMO-weercode (Open-Meteo) → [icoon overdag, icoon 's nachts, omschrijving]
     const WMO_CODES = {
-      0: ['☀️', '🌙', 'Helder'],
-      1: ['🌤️', '🌙', 'Overwegend helder'],
-      2: ['⛅', '☁️', 'Half bewolkt'],
-      3: ['☁️', '☁️', 'Bewolkt'],
-      45: ['🌫️', '🌫️', 'Mist'],
-      48: ['🌫️', '🌫️', 'Mist met rijp'],
-      51: ['🌦️', '🌧️', 'Lichte motregen'],
-      53: ['🌦️', '🌧️', 'Motregen'],
-      55: ['🌧️', '🌧️', 'Dichte motregen'],
-      56: ['🌧️', '🌧️', 'Lichte ijzel'],
-      57: ['🌧️', '🌧️', 'IJzel'],
-      61: ['🌦️', '🌧️', 'Lichte regen'],
-      63: ['🌧️', '🌧️', 'Regen'],
-      65: ['🌧️', '🌧️', 'Zware regen'],
-      66: ['🌧️', '🌧️', 'Lichte ijzelregen'],
-      67: ['🌧️', '🌧️', 'IJzelregen'],
-      71: ['🌨️', '🌨️', 'Lichte sneeuw'],
-      73: ['🌨️', '🌨️', 'Sneeuw'],
-      75: ['❄️', '❄️', 'Zware sneeuw'],
-      77: ['🌨️', '🌨️', 'Korrelsneeuw'],
-      80: ['🌦️', '🌧️', 'Lichte buien'],
-      81: ['🌧️', '🌧️', 'Buien'],
-      82: ['⛈️', '⛈️', 'Zware buien'],
-      85: ['🌨️', '🌨️', 'Sneeuwbuien'],
-      86: ['🌨️', '🌨️', 'Zware sneeuwbuien'],
-      95: ['⛈️', '⛈️', 'Onweer'],
-      96: ['⛈️', '⛈️', 'Onweer met hagel'],
-      99: ['⛈️', '⛈️', 'Zwaar onweer met hagel']
+      0: ['sun', 'moon', 'Helder'],
+      1: ['sun', 'moon', 'Overwegend helder'],
+      2: ['cloudSun', 'cloud', 'Half bewolkt'],
+      3: ['cloud', 'cloud', 'Bewolkt'],
+      45: ['fog', 'fog', 'Mist'],
+      48: ['fog', 'fog', 'Mist met rijp'],
+      51: ['drizzle', 'drizzle', 'Lichte motregen'],
+      53: ['drizzle', 'drizzle', 'Motregen'],
+      55: ['drizzle', 'drizzle', 'Dichte motregen'],
+      56: ['drizzle', 'drizzle', 'Lichte ijzel'],
+      57: ['drizzle', 'drizzle', 'IJzel'],
+      61: ['rain', 'rain', 'Lichte regen'],
+      63: ['rain', 'rain', 'Regen'],
+      65: ['rain', 'rain', 'Zware regen'],
+      66: ['rain', 'rain', 'Lichte ijzelregen'],
+      67: ['rain', 'rain', 'IJzelregen'],
+      71: ['snow', 'snow', 'Lichte sneeuw'],
+      73: ['snow', 'snow', 'Sneeuw'],
+      75: ['snow', 'snow', 'Zware sneeuw'],
+      77: ['snow', 'snow', 'Korrelsneeuw'],
+      80: ['rain', 'rain', 'Lichte buien'],
+      81: ['rain', 'rain', 'Buien'],
+      82: ['storm', 'storm', 'Zware buien'],
+      85: ['snow', 'snow', 'Sneeuwbuien'],
+      86: ['snow', 'snow', 'Zware sneeuwbuien'],
+      95: ['storm', 'storm', 'Onweer'],
+      96: ['storm', 'storm', 'Onweer met hagel'],
+      99: ['storm', 'storm', 'Zwaar onweer met hagel']
     };
 
     const THEMES = ['light', 'dark', 'system'];
@@ -908,17 +959,17 @@
       },
       services: { workerUrl: '', workerKey: '' },
       tiles: [
-        { id: 't1', type: 'calendar', title: 'Agenda', icon: '📅', icsUrl: '', daysAhead: 30 },
-        { id: 't2', type: 'link', title: 'Outlook', icon: '✉️', color: '',
+        { id: 't1', type: 'calendar', title: 'Agenda', icon: 'calendar', icsUrl: '', daysAhead: 30 },
+        { id: 't2', type: 'link', title: 'Outlook', icon: 'mail', color: '',
           target: { kind: 'url', value: 'https://outlook.office.com/mail/' } },   // kind: 'url' | 'path' | 'session-file'
-        { id: 't3', type: 'link', title: 'Google Agenda', icon: '🗓️', color: '',
+        { id: 't3', type: 'link', title: 'Google Agenda', icon: 'calendar', color: '',
           target: { kind: 'url', value: 'https://calendar.google.com/' } },
-        { id: 't4', type: 'links', title: 'Microsoft 365', icon: '💼', links: [
+        { id: 't4', type: 'links', title: 'Microsoft 365', icon: 'briefcase', links: [
           { label: 'Teams', url: 'https://teams.microsoft.com/' },
           { label: 'OneDrive', url: 'https://onedrive.live.com/' },
           { label: 'Office', url: 'https://www.office.com/' }
         ] },
-        { id: 't5', type: 'rss', title: 'Nieuws', icon: '📰', feedUrl: 'https://feeds.nos.nl/nosnieuwsalgemeen', maxItems: 8 }
+        { id: 't5', type: 'rss', title: 'Nieuws', icon: 'rss', feedUrl: 'https://feeds.nos.nl/nosnieuwsalgemeen', maxItems: 8 }
       ],
       quickLinks: {
         enabled: true,
@@ -941,10 +992,10 @@
     const LINK_DEFAULTS = { label: '', url: '' };
 
     const TILE_TYPES = {
-      link: { label: 'Gewone tegel', cells: 1, defaultTitle: 'Nieuwe tegel', icon: '🔗' },
-      links: { label: 'Link-tegel (lijst)', cells: 1, defaultTitle: 'Links', icon: '🗂️' },
-      rss: { label: 'RSS-feed', cells: 1, defaultTitle: 'Nieuws', icon: '📰' },
-      calendar: { label: 'Agenda (2 × 2)', cells: 4, defaultTitle: 'Agenda', icon: '📅' }
+      link: { label: 'Gewone tegel', cells: 1, defaultTitle: 'Nieuwe tegel', icon: 'link' },
+      links: { label: 'Link-tegel (lijst)', cells: 1, defaultTitle: 'Links', icon: 'bookmark' },
+      rss: { label: 'RSS-feed', cells: 1, defaultTitle: 'Nieuws', icon: 'rss' },
+      calendar: { label: 'Agenda (2 × 2)', cells: 4, defaultTitle: 'Agenda', icon: 'calendar' }
     };
 
     const TARGET_KINDS = {
@@ -972,11 +1023,79 @@
       up: 'M18 15l-6-6-6 6',
       down: 'M6 9l6 6 6-6',
       plus: 'M12 5v14M5 12h14',
-      back: 'M15 18l-6-6 6-6'
+      back: 'M15 18l-6-6 6-6',
+      // Weer
+      sun: 'M7 12a5 5 0 1 0 10 0a5 5 0 1 0-10 0M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42',
+      moon: 'M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z',
+      cloudSun: 'M8 2v1.5M3.4 3.9l1 1M2 8.5h1.5M12.6 3.9l-1 1M5.2 10.6A3.5 3.5 0 0 1 11.3 6.4M18 11h-1.2A6 6 0 1 0 11 19h7a4 4 0 0 0 0-8z',
+      cloud: 'M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z',
+      fog: 'M4 9h16M2 13h20M5 17h14M8 21h8',
+      drizzle: 'M8 19v2M8 13v2M16 19v2M16 13v2M12 21v2M12 15v2M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25',
+      rain: 'M16 13v8M8 13v8M12 15v8M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25',
+      snow: 'M20 17.58A5 5 0 0 0 18 8h-1.26A8 8 0 1 0 4 16.25M8 16h.01M8 20h.01M12 18h.01M12 22h.01M16 16h.01M16 20h.01',
+      storm: 'M19 16.9A5 5 0 0 0 18 7h-1.26a8 8 0 1 0-11.62 9M13 11l-4 6h6l-4 6'
+    };
+
+    // Kiesbare lijniconen voor tegels (naam → [omschrijving, SVG-pad]); vormen gebaseerd op Feather Icons (MIT).
+    const TILE_ICONS = {
+      mail: ['E-mail', 'M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM22 6l-10 7L2 6'],
+      inbox: ['Postvak', 'M22 12h-6l-2 3h-4l-2-3H2M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z'],
+      calendar: ['Agenda', 'M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM16 2v4M8 2v4M3 10h18'],
+      clock: ['Klok', 'M2 12a10 10 0 1 0 20 0a10 10 0 1 0-20 0M12 6v6l4 2'],
+      check: ['Taken', 'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11'],
+      folder: ['Map', 'M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z'],
+      file: ['Document', 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M16 13H8M16 17H8M10 9H8'],
+      table: ['Spreadsheet', 'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM3 9h18M3 15h18M9 3v18'],
+      monitor: ['Presentatie', 'M4 3h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8 21h8M12 17v4'],
+      chart: ['Grafiek', 'M18 20V10M12 20V4M6 20v-6'],
+      activity: ['Activiteit', 'M22 12h-4l-3 9L9 3l-3 9H2'],
+      database: ['Database', 'M3 5c0 1.66 4 3 9 3s9-1.34 9-3-4-3-9-3-9 1.34-9 3zM21 12c0 1.66-4 3-9 3s-9-1.34-9-3M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5'],
+      server: ['Server', 'M4 2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM4 14h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2zM6 6h.01M6 18h.01'],
+      cloud: ['Cloud', ICON_PATHS.cloud],
+      download: ['Downloads', 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3'],
+      link: ['Link', 'M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71'],
+      globe: ['Website', 'M2 12a10 10 0 1 0 20 0a10 10 0 1 0-20 0M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z'],
+      bookmark: ['Bladwijzer', 'M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z'],
+      rss: ['Nieuws (RSS)', 'M4 11a9 9 0 0 1 9 9M4 4a16 16 0 0 1 16 16M4 19a1 1 0 1 0 2 0a1 1 0 1 0-2 0'],
+      book: ['Boek', 'M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z'],
+      message: ['Chat', 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'],
+      video: ['Video', 'M23 7l-7 5 7 5V7zM3 5h11a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z'],
+      users: ['Team', 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M5 7a4 4 0 1 0 8 0a4 4 0 1 0-8 0M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75'],
+      user: ['Persoon', 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M8 7a4 4 0 1 0 8 0a4 4 0 1 0-8 0'],
+      briefcase: ['Werk', 'M4 7h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2zM16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16'],
+      home: ['Thuis', 'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM9 22V12h6v10'],
+      cart: ['Winkelen', 'M8 21a1 1 0 1 0 2 0a1 1 0 1 0-2 0M19 21a1 1 0 1 0 2 0a1 1 0 1 0-2 0M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6'],
+      card: ['Bank', 'M3 4h18a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM1 10h22'],
+      image: ['Foto\'s', 'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM7 8.5a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0-3 0M21 15l-5-5L5 21'],
+      music: ['Muziek', 'M9 18V5l12-2v13M3 18a3 3 0 1 0 6 0a3 3 0 1 0-6 0M15 16a3 3 0 1 0 6 0a3 3 0 1 0-6 0'],
+      headphones: ['Audio', 'M3 18v-6a9 9 0 0 1 18 0v6M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z'],
+      map: ['Locatie', 'M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0zM9 10a3 3 0 1 0 6 0a3 3 0 1 0-6 0'],
+      search: ['Zoeken', 'M3 11a8 8 0 1 0 16 0a8 8 0 1 0-16 0M21 21l-4.35-4.35'],
+      star: ['Favoriet', 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z'],
+      heart: ['Hart', 'M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z'],
+      code: ['Code', 'M16 18l6-6-6-6M8 6l-6 6 6 6'],
+      terminal: ['Terminal', 'M4 17l6-6-6-6M12 19h8'],
+      tool: ['Gereedschap', 'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z'],
+      lock: ['Beveiliging', 'M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2zM7 11V7a5 5 0 0 1 10 0v4'],
+      printer: ['Printer', 'M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z'],
+      zap: ['Snel', 'M13 2L3 14h9l-1 8 10-12h-9l1-8z'],
+      coffee: ['Pauze', 'M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8zM6 1v3M10 1v3M14 1v3']
     };
 
     // MIGRATIONS[n] zet een config van versie n om naar versie n + 1 (verhoog daarbij CONFIG_VERSION).
-    const MIGRATIONS = {};
+    const MIGRATIONS = {
+      // v2: de standaard-emoji's uit eerdere versies worden lijniconen uit TILE_ICONS.
+      1: data => {
+        const emojiToIcon = {
+          '✉️': 'mail', '📅': 'calendar', '🗓️': 'calendar', '💼': 'briefcase', '📰': 'rss',
+          '🔗': 'link', '🗂️': 'bookmark', '📁': 'folder', '📄': 'file', '📊': 'table'
+        };
+        for (const tile of Array.isArray(data.tiles) ? data.tiles : []) {
+          if (isPlainObject(tile) && emojiToIcon[tile.icon]) tile.icon = emojiToIcon[tile.icon];
+        }
+        return data;
+      }
+    };
 
     const SETTINGS_SECTIONS = [
       { id: 'general', label: 'Algemeen', description: 'Titel, welkomsttekst en logo.' },
@@ -1335,10 +1454,9 @@
 
     function buildLinkTile(tile) {
       const style = tile.color ? { '--tile-color': tile.color } : null;
+      const glyph = buildTileGlyph(tile);
       const face = [
-        tile.icon
-          ? el('span', { class: 'tile-icon', 'aria-hidden': 'true' }, tile.icon)
-          : el('span', { class: 'tile-icon tile-icon--letter', 'aria-hidden': 'true' }, initial(tile.title)),
+        el('span', { class: glyph ? 'tile-icon' : 'tile-icon tile-icon--letter', 'aria-hidden': 'true' }, glyph ?? initial(tile.title)),
         el('span', { class: 'tile-title' }, tile.title)
       ];
       if (tile.target.kind === 'session-file') return buildSessionFileTile(tile, style, face);
@@ -1429,9 +1547,17 @@
     }
 
     function buildTileHeading(tile) {
+      const glyph = buildTileGlyph(tile);
       return el('h2', { class: 'tile-heading' },
-        tile.icon ? el('span', { 'aria-hidden': 'true' }, tile.icon) : null,
+        glyph ? el('span', { 'aria-hidden': 'true' }, glyph) : null,
         el('span', {}, tile.title));
+    }
+
+    // Een lijnicoon uit TILE_ICONS, of een eigen teken/emoji (in grijstinten), of niets.
+    function buildTileGlyph(tile) {
+      if (TILE_ICONS[tile.icon]) return icon(tile.icon);
+      if (tile.icon) return el('span', { class: 'emoji-icon' }, tile.icon);
+      return null;
     }
 
     function buildTileState(message) {
@@ -1443,21 +1569,36 @@
       return /^(https?|file|blob):/i.test(href) ? { href, target: '_blank', rel: 'noopener noreferrer' } : { href };
     }
 
-    // Favicon via Google; grijs tot je de link aanwijst. Mislukt het laden, dan verdwijnt het icoontje.
+    // Favicon van de site, grijs tot je de link aanwijst. Lukt een bron niet, dan de volgende;
+    // levert geen enkele bron iets op, dan de eerste letter van het domein.
     function buildFavicon(href) {
       if (!config.appearance.favicons) return null;
       const { protocol, hostname } = new URL(href);
       if (protocol !== 'http:' && protocol !== 'https:') return null;
+
+      let source = 0;
       const image = el('img', {
         class: 'favicon',
-        src: `${FAVICON_SERVICE}?domain=${encodeURIComponent(hostname)}&sz=32`,
+        src: FAVICON_SOURCES[0](hostname),
         alt: '',
         width: 16,
         height: 16,
-        loading: 'lazy',
         referrerpolicy: 'no-referrer'
       });
-      image.addEventListener('error', () => image.remove(), { once: true });
+      const tryNext = () => {
+        source += 1;
+        if (source < FAVICON_SOURCES.length) {
+          image.src = FAVICON_SOURCES[source](hostname);
+        } else {
+          // nl.wikipedia.org → W, www.google.com → G
+          const labels = hostname.split('.');
+          const name = labels.length > 2 ? labels[labels.length - 2] : labels[0];
+          image.replaceWith(el('span', { class: 'favicon favicon--letter', 'aria-hidden': 'true' }, initial(name)));
+        }
+      };
+      image.addEventListener('error', tryNext);
+      // Een (bijna) leeg plaatje telt als mislukt.
+      image.addEventListener('load', () => { if (image.naturalWidth < 8) tryNext(); });
       return image;
     }
 
@@ -1470,7 +1611,7 @@
           : [];
       });
       bar.replaceChildren(...links);
-      bar.hidden = !config.quickLinks.enabled || !links.length;
+      $('#siteFooter').hidden = !config.quickLinks.enabled || !links.length;
     }
 
     /* ======================================================================
@@ -1664,13 +1805,13 @@
       widget.hidden = !current;
       if (!current) return;
 
-      const [dayIcon, nightIcon, description] = WMO_CODES[current.weather_code] ?? ['🌡️', '🌡️', 'Onbekend weer'];
+      const [dayIcon, nightIcon, description] = WMO_CODES[current.weather_code] ?? ['cloud', 'cloud', 'Onbekend weer'];
       const { name } = config.weather.location;
       const { temperature_2m_min: min, temperature_2m_max: max } = weather.data.daily ?? {};
       const stale = weather.failed || Date.now() - weather.fetchedAt > 2 * WEATHER_REFRESH_MS;
       const temperature = `${Math.round(current.temperature_2m)}°`;
 
-      $('.weather-icon', widget).textContent = current.is_day ? dayIcon : nightIcon;
+      $('.weather-icon', widget).replaceChildren(icon(current.is_day ? dayIcon : nightIcon));
       $('.weather-temp', widget).textContent = temperature;
       $('.weather-place', widget).textContent = name;
       widget.classList.toggle('is-stale', stale);
@@ -1757,6 +1898,10 @@
       'set-accent': button => {
         draft.appearance.accentColor = button.dataset.color;
         applyAppearance(draft.appearance);
+        rerenderSettings();
+      },
+      'set-tile-icon': button => {
+        setPath(draft, button.dataset.path, button.dataset.icon);
         rerenderSettings();
       },
       'choose-place': button => {
@@ -2099,8 +2244,8 @@
             field('Rijen', selectFor('appearance.gridRows', gridOptions, { 'data-type': 'number', 'data-rerender': true }))),
           field('Tegelstijl', selectFor('appearance.tileStyle', [['rounded', 'Afgerond'], ['square', 'Vierkant']]))),
         buildSettingsGroup('Favicons',
-          'Kleine logo\'s bij snelle links en links in een link-tegel. Ze komen van Google; daardoor ziet Google ' +
-          'welke websites in je links staan.',
+          'Kleine logo\'s bij snelle links en links in een link-tegel. Ze komen van DuckDuckGo, Google of de site zelf; ' +
+          'daardoor zien die diensten welke websites in je links staan.',
           checkbox('appearance.favicons', 'Favicons tonen'))
       ];
     }
@@ -2120,7 +2265,7 @@
           `${used} van ${capacity} cellen gebruikt (grid ${gridColumns} × ${gridRows}).`),
         draft.tiles.length
           ? el('ul', { class: 'settings-list' }, draft.tiles.map((tile, index) => el('li', { class: 'settings-list-item' },
-              el('span', { class: 'item-icon', 'aria-hidden': 'true' }, tile.icon || initial(tile.title)),
+              el('span', { class: 'item-icon', 'aria-hidden': 'true' }, buildTileGlyph(tile) ?? initial(tile.title)),
               el('button', { class: 'item-main', type: 'button', 'data-action': 'edit-tile', 'data-id': tile.id },
                 el('span', { class: 'item-title' }, tile.title || '(zonder titel)'),
                 el('span', { class: 'item-meta' }, describeTile(tile))),
@@ -2200,8 +2345,15 @@
         el('button', { class: 'btn back-btn', type: 'button', 'data-action': 'close-tile-editor' }, icon('back'), 'Alle tegels'),
         buildSettingsGroup(`${TILE_TYPES[tile.type].label} bewerken`, null,
           field('Titel', inputFor(`${base}.title`, { maxlength: 60 })),
-          field('Icoon', inputFor(`${base}.icon`, { maxlength: 8, class: 'input-short' }),
-            'Een emoji, bijvoorbeeld 📁. Windows-toets + punt opent de emoji-kiezer. Leeg: de eerste letter van de titel.'),
+          buildIconPicker(tile, base),
+          field('Of een eigen teken', el('input', {
+            type: 'text',
+            class: 'input-short',
+            value: TILE_ICONS[tile.icon] ? '' : tile.icon,
+            'data-path': `${base}.icon`,
+            maxlength: 8,
+            placeholder: 'bijv. ★'
+          }), 'Een emoji of teken, in grijstinten getoond. Windows-toets + punt opent de emoji-kiezer.'),
           TILE_EDITORS[tile.type](tile, base)),
         el('div', { class: 'inline editor-footer' },
           el('button', { class: 'btn btn--primary', type: 'button', 'data-action': 'close-tile-editor' }, 'Klaar'),
@@ -2213,6 +2365,24 @@
             'data-index': index
           }, icon('trash'), 'Tegel verwijderen'))
       ];
+    }
+
+    function buildIconPicker(tile, base) {
+      const choice = (name, label, content, extraClass = '') => el('button', {
+        class: `icon-choice${extraClass}`,
+        type: 'button',
+        'data-action': 'set-tile-icon',
+        'data-path': `${base}.icon`,
+        'data-icon': name,
+        'aria-pressed': String(tile.icon === name),
+        title: label,
+        'aria-label': label
+      }, content);
+
+      return field('Icoon',
+        el('div', { class: 'icon-picker', role: 'group', 'aria-label': 'Icoon kiezen' },
+          choice('', 'Geen icoon: de eerste letter van de titel', 'Abc', ' icon-choice--none'),
+          Object.entries(TILE_ICONS).map(([name, [label]]) => choice(name, label, icon(name)))));
     }
 
     function renderQuickLinkSettings() {
@@ -2339,7 +2509,7 @@
       svg.setAttribute('aria-hidden', 'true');
       svg.classList.add('icon');
       const path = document.createElementNS(svg.namespaceURI, 'path');
-      path.setAttribute('d', ICON_PATHS[name]);
+      path.setAttribute('d', ICON_PATHS[name] ?? TILE_ICONS[name][1]);
       svg.append(path);
       return svg;
     }
