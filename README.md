@@ -8,7 +8,8 @@ Ontwerp, keuzes en fasering staan in [PROJECTPLAN.md](PROJECTPLAN.md).
 ## Status
 
 **Fase 1 t/m 7 zijn klaar.** Alles stel je in via ⚙ Instellingen:
-- **Tegels** toevoegen, bewerken, ordenen en verwijderen. Een gewone tegel opent:
+- **Tegels** toevoegen, bewerken, ordenen en verwijderen. Versleep tegels ook direct op het dashboard. Een
+  gewone tegel opent:
   - een **website**;
   - een **lokaal bestand of map**: plak het pad, bijvoorbeeld via rechtsklik → *Als pad kopiëren* in Verkenner;
   - een **bestand dat je per sessie kiest**.
@@ -17,8 +18,7 @@ Ontwerp, keuzes en fasering staan in [PROJECTPLAN.md](PROJECTPLAN.md).
 - **Algemeen**: titel, welkomsttekst en logo (adres, pad of upload).
 - **Gegevens**: exporteren, importeren en terugzetten. Instellingen worden bewaard, met een automatische back-up.
 
-- **Weer & klok**: het weer in de kopbalk (Open-Meteo). Zoek je plaats op naam; klik op het weer om hem te
-  wijzigen.
+- **Weer & klok**: het weer in de kopbalk (Open-Meteo). Zoek je plaats op naam.
 
 Alle links openen in een nieuw tabblad. Tegels hebben grijze lijniconen; kies er een uit de set van 87
 in de tegel-editor. Snelle links staan in een vaste balk onderaan. Snelle links en links in een link-tegel tonen

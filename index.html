@@ -134,10 +134,11 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 8px 16px;
+      padding: 6px 14px;
       border: 1px solid var(--border);
-      border-radius: 10px;
+      border-radius: 8px;
       background: var(--surface);
+      font-size: .8125rem;
       font-weight: 500;
       cursor: pointer;
     }
@@ -193,7 +194,15 @@
       font-size: .8rem;
     }
     .header-left { grid-area: left; display: flex; align-items: center; gap: 10px; min-width: 0; }
-    .header-center { grid-area: center; min-width: 0; text-align: center; }
+    /* Titel en welkomsttekst staan samen, naast elkaar, precies in het midden. */
+    .header-center {
+      grid-area: center;
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      gap: 12px;
+      min-width: 0;
+    }
     .header-right {
       grid-area: right;
       justify-self: end;
@@ -219,22 +228,16 @@
       letter-spacing: -.005em;
       line-height: 1.3;
     }
-    .welcome { font-size: .85rem; white-space: nowrap; }
+    .welcome { padding-left: 12px; border-left: 1px solid var(--border); font-size: .85rem; white-space: nowrap; }
 
     .weather {
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 4px 8px;
-      border: 0;
-      border-radius: 8px;
-      background: none;
-      color: inherit;
+      padding: 0 8px;
       line-height: 1.2;
       text-align: right;
-      cursor: pointer;
     }
-    .weather:hover { background: var(--surface-hover); color: var(--text); }
     .weather.is-stale { opacity: .55; }
     .weather-icon { display: grid; }
     .weather-icon .icon { width: 22px; height: 22px; }
@@ -264,7 +267,7 @@
         grid-template-areas: "left right" "center center";
         row-gap: 6px;
       }
-      .header-center { text-align: left; }
+      .header-center { justify-content: flex-start; }
       .header-buttons { margin-left: 4px; padding-left: 6px; }
     }
 
@@ -524,6 +527,12 @@
 
     .tile--calendar { grid-column: span 2; grid-row: span 2; }
 
+    /* Verslepen */
+    .grid > [draggable="true"] { cursor: grab; }
+    .grid.is-sorting .tile { transition: none; }
+    .grid.is-sorting .tile--link:hover { transform: none; box-shadow: var(--shadow); }
+    .tile.is-dragging { opacity: .35; outline: 2px dashed var(--text-muted); outline-offset: -2px; }
+
     /* ======================================================================
        Snelle links
        ====================================================================== */
@@ -562,8 +571,8 @@
        Instellingenmodal
        ====================================================================== */
     .settings-modal {
-      width: min(880px, 100vw - 32px);
-      height: min(620px, 100dvh - 32px);
+      width: min(1120px, 100vw - 32px);
+      height: min(820px, 100dvh - 32px);
       max-width: none;
       max-height: none;
       padding: 0;
@@ -571,6 +580,7 @@
       border-radius: 18px;
       background: var(--surface);
       color: var(--text);
+      font-size: .8125rem;
       box-shadow: 0 24px 64px rgb(0 0 0 / .3);
     }
     .settings-modal::backdrop { background: var(--backdrop); backdrop-filter: blur(2px); }
@@ -584,9 +594,9 @@
       padding: 14px 16px 14px 24px;
       border-bottom: 1px solid var(--border);
     }
-    .settings-header h2 { font-size: 1.15rem; font-weight: 650; }
+    .settings-header h2 { font-size: 1rem; font-weight: 650; }
 
-    .settings-body { display: grid; grid-template-columns: 210px 1fr; min-height: 0; }
+    .settings-body { display: grid; grid-template-columns: 200px 1fr; min-height: 0; }
 
     .settings-nav {
       display: flex;
@@ -598,9 +608,9 @@
     }
     .settings-nav-item {
       flex: none;
-      padding: 9px 12px;
+      padding: 7px 12px;
       border: 0;
-      border-radius: 10px;
+      border-radius: 8px;
       background: none;
       color: var(--text-muted);
       text-align: left;
@@ -613,8 +623,8 @@
       font-weight: 600;
     }
 
-    .settings-panel { display: grid; align-content: start; gap: 8px; padding: 20px 24px; overflow: auto; }
-    .settings-panel h3 { font-size: 1.05rem; font-weight: 650; }
+    .settings-panel { display: grid; align-content: start; gap: 8px; padding: 18px 28px; overflow: auto; }
+    .settings-panel h3 { font-size: .95rem; font-weight: 650; }
     .settings-group {
       display: grid;
       gap: 6px;
@@ -622,23 +632,23 @@
       padding-top: 16px;
       border-top: 1px solid var(--border);
     }
-    .settings-group h4 { font-size: .95rem; font-weight: 600; }
-    .settings-group p { max-width: 60ch; color: var(--text-muted); font-size: .9rem; }
+    .settings-group h4 { font-size: .85rem; font-weight: 600; }
+    .settings-group p { max-width: 70ch; color: var(--text-muted); font-size: .78rem; }
     .settings-group-content { display: grid; gap: 14px; margin-top: 6px; }
     .settings-group-content > :is(.btn, .check, .inline, .office-option) { justify-self: start; }
 
-    .field { display: grid; gap: 4px; max-width: 560px; }
+    .field { display: grid; gap: 4px; max-width: 640px; }
     .field--wide { max-width: none; }
-    .field-label { font-size: .85rem; font-weight: 600; }
-    .field-hint { max-width: 60ch; color: var(--text-muted); font-size: .8rem; }
+    .field-label { font-size: .78rem; font-weight: 600; }
+    .field-hint { max-width: 70ch; color: var(--text-muted); font-size: .72rem; }
     .static-value { font-weight: 500; }
 
     .settings-panel :is(input[type="text"], input[type="search"], input[type="url"], input[type="password"], input[type="number"], select) {
       width: 100%;
       min-width: 0;
-      padding: 8px 10px;
+      padding: 6px 9px;
       border: 1px solid var(--border);
-      border-radius: 8px;
+      border-radius: 7px;
       background: var(--bg);
       color: var(--text);
       font: inherit;
@@ -688,14 +698,14 @@
 
     .icon-picker {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(36px, 1fr));
       gap: 4px;
-      max-width: 560px;
+      max-width: 820px;
     }
     .icon-choice {
       display: grid;
       place-items: center;
-      height: 38px;
+      height: 36px;
       padding: 0;
       border: 1px solid transparent;
       border-radius: 8px;
@@ -709,7 +719,7 @@
     .icon-choice--none { font-size: .7rem; }
     .item-icon .icon { width: 18px; height: 18px; vertical-align: middle; }
 
-    .status { font-size: .85rem; color: var(--text-muted); }
+    .status { font-size: .78rem; color: var(--text-muted); }
     .status[data-state="ok"] { color: var(--success); }
     .status[data-state="error"] { color: var(--danger); }
 
@@ -725,9 +735,9 @@
       cursor: pointer;
     }
     .place-option:hover { border-color: var(--accent); }
-    .place-option span { font-size: .8rem; }
+    .place-option span { font-size: .72rem; }
 
-    .capacity { color: var(--text-muted); font-size: .9rem; }
+    .capacity { color: var(--text-muted); font-size: .78rem; }
     .capacity.is-over { color: var(--danger); font-weight: 600; }
 
     .settings-list { display: grid; gap: 6px; margin: 4px 0 0; padding: 0; list-style: none; }
@@ -740,7 +750,7 @@
       border-radius: 10px;
       background: var(--bg);
     }
-    .item-icon { flex: none; width: 28px; color: var(--text-muted); font-size: 1.05rem; font-weight: 600; text-align: center; }
+    .item-icon { flex: none; width: 28px; color: var(--text-muted); font-size: .95rem; font-weight: 600; text-align: center; }
     .item-main {
       flex: 1;
       display: grid;
@@ -753,7 +763,7 @@
     }
     .item-title, .item-meta { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
     .item-title { font-weight: 600; }
-    .item-meta { color: var(--text-muted); font-size: .8rem; }
+    .item-meta { color: var(--text-muted); font-size: .72rem; }
 
     .row-actions { display: flex; flex: none; gap: 2px; }
     .mini-btn {
@@ -781,7 +791,7 @@
     .rows + .btn { justify-self: start; margin-top: 4px; }
 
     .add-row { margin-top: 8px; }
-    .add-row select { width: auto; }
+    .settings-panel .add-row select { width: auto; }
     .back-btn { justify-self: start; }
     .editor-footer { margin-top: 12px; }
 
@@ -830,21 +840,21 @@
   <header class="site-header">
     <div class="header-left">
       <img id="logo" class="logo" alt="Logo" hidden>
-      <h1 id="pageTitle" class="page-title"></h1>
     </div>
 
     <div class="header-center">
+      <h1 id="pageTitle" class="page-title"></h1>
       <p id="welcomeText" class="welcome" hidden></p>
     </div>
 
     <div class="header-right">
-      <button id="weatherWidget" class="weather" type="button" hidden>
-        <span class="weather-icon"></span>
+      <div id="weatherWidget" class="weather" hidden>
+        <span class="weather-icon" role="img"></span>
         <span class="weather-text">
           <span class="weather-temp"></span>
           <span class="weather-place"></span>
         </span>
-      </button>
+      </div>
       <div id="clock" class="clock">
         <time id="clockTime" class="clock-time"></time>
         <span id="clockDate" class="clock-date"></span>
@@ -1537,7 +1547,14 @@
       if (!builder) return null;
       const node = builder(tile);
       node.dataset.tileId = tile.id;
+      node.draggable = true;
+      preventInnerDrag(node);
       return node;
+    }
+
+    // Links en afbeeldingen in een tegel zijn standaard zelf sleepbaar; dan zou je een link slepen i.p.v. de tegel.
+    function preventInnerDrag(root) {
+      for (const element of root.querySelectorAll('a, img')) element.draggable = false;
     }
 
     function buildLinkTile(tile) {
@@ -1655,7 +1672,9 @@
     function renderFeedTiles(feedUrl) {
       for (const tile of config.tiles) {
         if (tile.type !== 'rss' || tile.feedUrl !== feedUrl) continue;
-        $(`[data-tile-id="${CSS.escape(tile.id)}"] .tile-body`)?.replaceChildren(...[buildFeedContent(tile)].flat());
+        const body = $(`[data-tile-id="${CSS.escape(tile.id)}"] .tile-body`);
+        body?.replaceChildren(...[buildFeedContent(tile)].flat());
+        if (body) preventInnerDrag(body);
       }
     }
 
@@ -1746,7 +1765,7 @@
       $('#themeToggle').addEventListener('click', toggleTheme);
       $('#settingsBtn').addEventListener('click', () => openSettings());
       $('#tileGrid').addEventListener('click', handleTileClick);
-      $('#weatherWidget').addEventListener('click', () => openSettings('weather'));
+      bindTileDragging($('#tileGrid'));
 
       $('#sessionFileInput').addEventListener('change', event => {
         const [file] = event.target.files;
@@ -1814,6 +1833,54 @@
         const [file] = event.target.files;
         event.target.value = '';
         if (file) importConfig(file);
+      });
+    }
+
+    // Tegels verslepen op het dashboard: de andere tegels schuiven live mee; bij loslaten wordt de volgorde bewaard.
+    // Loslaten buiten het grid (of Esc) zet alles terug.
+    function bindTileDragging(grid) {
+      let draggedId = null;
+      const draggedTile = () => $(`[data-tile-id="${CSS.escape(draggedId)}"]`, grid);
+
+      grid.addEventListener('dragstart', event => {
+        const tile = event.target.closest?.('[data-tile-id]');
+        if (!tile) return;
+        draggedId = tile.dataset.tileId;
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', tile.querySelector('.tile-title, .tile-heading')?.textContent ?? '');
+        grid.classList.add('is-sorting');
+        requestAnimationFrame(() => tile.classList.add('is-dragging'));
+      });
+
+      grid.addEventListener('dragover', event => {
+        if (!draggedId) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+        const target = event.target.closest?.('[data-tile-id]');
+        const dragged = draggedTile();
+        if (!target || !dragged || target === dragged) return;
+        const tiles = [...grid.children];
+        const after = tiles.indexOf(dragged) < tiles.indexOf(target);
+        target[after ? 'after' : 'before'](dragged);
+      });
+
+      grid.addEventListener('drop', event => {
+        if (!draggedId) return;
+        event.preventDefault();
+        const order = [...grid.querySelectorAll('[data-tile-id]')].map(tile => tile.dataset.tileId);
+        const changed = order.join() !== config.tiles.map(tile => tile.id).join();
+        if (changed) {
+          config.tiles.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+          saveData();
+        }
+      });
+
+      grid.addEventListener('dragend', () => {
+        if (!draggedId) return;
+        draggedId = null;
+        grid.classList.remove('is-sorting');
+        // Na loslaten (of annuleren) het grid opnieuw opbouwen vanuit de bewaarde volgorde.
+        renderGrid();
       });
     }
 
@@ -1914,10 +1981,8 @@
       const params = new URLSearchParams({
         latitude: location.latitude,
         longitude: location.longitude,
-        current: 'temperature_2m,apparent_temperature,weather_code,wind_speed_10m,is_day',
-        daily: 'temperature_2m_max,temperature_2m_min',
-        timezone: 'auto',
-        forecast_days: 1
+        current: 'temperature_2m,weather_code,is_day',
+        timezone: 'auto'
       });
       if (unit === 'fahrenheit') params.set('temperature_unit', 'fahrenheit');
       try {
@@ -1939,7 +2004,6 @@
 
       const [dayIcon, nightIcon, description] = WMO_CODES[current.weather_code] ?? ['cloud', 'cloud', 'Onbekend weer'];
       const { name } = config.weather.location;
-      const { temperature_2m_min: min, temperature_2m_max: max } = weather.data.daily ?? {};
       const stale = weather.failed || Date.now() - weather.fetchedAt > 2 * WEATHER_REFRESH_MS;
       const temperature = `${Math.round(current.temperature_2m)}°`;
 
@@ -1947,14 +2011,8 @@
       $('.weather-temp', widget).textContent = temperature;
       $('.weather-place', widget).textContent = name;
       widget.classList.toggle('is-stale', stale);
-      widget.title = [
-        `${description} in ${name}`,
-        `Gevoelstemperatuur ${Math.round(current.apparent_temperature)}°`,
-        min?.length && max?.length ? `Vandaag ${Math.round(min[0])}° tot ${Math.round(max[0])}°` : null,
-        `Wind ${Math.round(current.wind_speed_10m)} km/u`,
-        `Bijgewerkt om ${TIME_FORMAT.format(new Date(weather.fetchedAt))}${stale ? ' (verouderd)' : ''}`
-      ].filter(Boolean).join('\n');
-      widget.setAttribute('aria-label', `Weer in ${name}: ${temperature}, ${description.toLowerCase()}. Plaats wijzigen`);
+      widget.dataset.description = description; // voor schermlezers en tests; geen tooltip
+      $('.weather-icon', widget).setAttribute('aria-label', description);
     }
 
     // Haalt een bestand op via de Worker; gooit een fout met de (Nederlandse) uitleg van de Worker.
@@ -2510,7 +2568,8 @@
       const used = countCells(draft.tiles);
       return [
         el('p', { class: `capacity${used > capacity ? ' is-over' : ''}` },
-          `${used} van ${capacity} cellen gebruikt (grid ${gridColumns} × ${gridRows}).`),
+          `${used} van ${capacity} cellen gebruikt (grid ${gridColumns} × ${gridRows}). ` +
+          'Tip: je kunt tegels ook op het dashboard zelf verslepen.'),
         draft.tiles.length
           ? el('ul', { class: 'settings-list' }, draft.tiles.map((tile, index) => el('li', { class: 'settings-list-item' },
               el('span', { class: 'item-icon', 'aria-hidden': 'true' }, buildTileGlyph(tile) ?? initial(tile.title)),
