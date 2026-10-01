@@ -33,12 +33,13 @@ Eén suite apart draaien: `node tests/09-agenda.mjs`. Schermafbeeldingen komen i
 | `05-ontwerp-iconen` | kop- en voetbalk, iconenkiezer, migratie van emoji's |
 | `06-worker-koppeling` | "Verbinding testen" tegen de echte Worker-code |
 | `07-rss` | RSS/Atom/RDF lezen, tegel, cache, storingen, onveilige links |
-| `08-kopbalk-slepen` | titel en welkom in het midden, grootte van de modal, tegels verslepen |
+| `08-kopbalk-slepen` | titel en welkom in het midden, grootte van de modal, tegels vrij verslepen, ruilen, aaneensluiten |
 | `09-agenda` | ICS lezen, herhalingen, tijdzones, wintertijd, tegel per dag |
 | `10-toegankelijkheid` | axe-core op dashboard en alle instellingen (licht en donker), toetsenbordbediening |
 | `11-beveiliging` | geen CSP-overtredingen bij normaal gebruik; onbekende servers en ingevoegde scripts geblokkeerd |
 | `12-indeling-favicons` | brede RSS-tegel, compacte links en agenda, grid tot 8 × 8, favicons via de Worker |
 | `13-favicon-achtergrond` | favicon als tegelicoon, accentkleur voor datum en tijd, agendagrootte, tegelachtergrond |
+| `14-halve-tegel-iconen` | halve tegels, zakelijke iconen en zoeken, tijdkolom van de agenda |
 
 ## Na het wijzigen van een script in index.html
 

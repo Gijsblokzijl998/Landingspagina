@@ -7,7 +7,7 @@
     Beveiligingsregel (CSP): alleen de twee ingebouwde scripts (vastgelegd met hun SHA-256), Open-Meteo, de Worker
     op workers.dev en afbeeldingen via https/data/blob/file. Na het wijzigen van een script: node tests/check-csp.mjs --fix
   -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-0rmtLU0ARXSsrvNsuB+4/Bmhz0qNOt8iOlmRWEBipkk=' 'sha256-SiIMSijzvmY2InXIRhCRPzfBi/U/+0iwehFUecO/bRU='; style-src 'unsafe-inline'; img-src https: data: blob: file:; connect-src https://api.open-meteo.com https://geocoding-api.open-meteo.com https://*.workers.dev; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-0rmtLU0ARXSsrvNsuB+4/Bmhz0qNOt8iOlmRWEBipkk=' 'sha256-9rAqvLy0frD7BQ1+zsy6M27eYBDC8b+KuzOXteKfWCQ='; style-src 'unsafe-inline'; img-src https: data: blob: file:; connect-src https://api.open-meteo.com https://geocoding-api.open-meteo.com https://*.workers.dev; base-uri 'none'; form-action 'none'; object-src 'none'">
   <title>Mijn Dashboard</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='2' width='12' height='12' rx='3' fill='%232563eb'/%3E%3Crect x='18' y='2' width='12' height='12' rx='3' fill='%2360a5fa'/%3E%3Crect x='2' y='18' width='12' height='12' rx='3' fill='%2360a5fa'/%3E%3Crect x='18' y='18' width='12' height='12' rx='3' fill='%232563eb'/%3E%3C/svg%3E">
   <script>
@@ -300,13 +300,21 @@
         (100cqi - (var(--cols) - 1) * var(--gap)) / var(--cols),
         (100dvh - var(--chrome-h) - (var(--rows) - 1) * var(--gap)) / var(--rows)
       ), 210px);
+      /* Rijen van een halve tegel: een gewone tegel beslaat er twee, een halve tegel één. */
+      --half: calc((var(--tile) - var(--gap)) / 2);
       display: grid;
       grid-template-columns: repeat(var(--cols), var(--tile));
-      grid-auto-rows: var(--tile);
+      grid-auto-rows: var(--half);
       grid-auto-flow: row dense;
       justify-content: center;
       gap: var(--gap);
       max-width: 100%;
+    }
+    /* Positie en grootte komen uit de indeling (layoutTiles). */
+    .grid > .tile,
+    .grid > .drop-ghost {
+      grid-column: var(--col, auto) / span var(--span-cols, 1);
+      grid-row: var(--row, auto) / span var(--span-rows, 2);
     }
 
     @container main (max-width: 600px) {
@@ -315,7 +323,8 @@
         --gap: 12px;
         --tile: calc((100cqi - var(--gap)) / 2);
       }
-      .grid .tile--calendar { grid-column: span 2; }
+      /* Smal venster: twee kolommen, tegels in volgorde onder elkaar (vrije posities gelden dan niet). */
+      .grid > .tile { grid-column: auto / span var(--span-cols-narrow, 1); grid-row: auto / span var(--span-rows, 2); }
     }
 
     .grid-empty {
@@ -516,7 +525,7 @@
 
     .tile-state.is-error { color: var(--danger); }
 
-    .tile--rss { grid-column: span 2; padding-top: 11px; padding-bottom: 9px; }
+    .tile--rss { padding-top: 11px; padding-bottom: 9px; }
     .tile--rss .tile-heading { margin-bottom: 4px; }
     .feed-list { display: grid; margin: 0; padding: 0; list-style: none; }
     .feed-item {
@@ -541,7 +550,6 @@
     .feed-meta { color: var(--accent-text); font-size: .7rem; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
     .feed-stale { margin-top: 6px; color: var(--text-muted); font-size: .7rem; font-style: italic; }
 
-    .tile--calendar { grid-column: span var(--span-cols, 3); grid-row: span var(--span-rows, 2); }
 
     .tile.has-background {
       background-image:
@@ -554,7 +562,11 @@
     .tile.has-background .agenda-date { background: none; }
 
     /* Agenda */
-    .agenda { display: grid; gap: 6px; }
+    /* Eén tijdkolom voor alle dagen (subgrid), zo breed als de langste tijd. */
+    .agenda { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 10px; }
+    .agenda-day, .agenda-list, .agenda-item { grid-column: 1 / -1; grid-template-columns: subgrid; row-gap: 0; }
+    .agenda-day { display: grid; }
+    .agenda-date { grid-column: 1 / -1; }
     .agenda-date {
       position: sticky;
       top: 0;
@@ -565,11 +577,9 @@
       font-size: .72rem;
       font-weight: 600;
     }
-    .agenda-list { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+    .agenda-list { display: grid; margin: 0; padding: 0; list-style: none; }
     .agenda-item {
       display: grid;
-      grid-template-columns: 86px minmax(0, 1fr);
-      gap: 8px;
       padding: 1px 6px;
       border-left: 2px solid transparent;
       border-radius: 4px;
@@ -591,6 +601,23 @@
     .grid.is-sorting .tile { transition: none; }
     .grid.is-sorting .tile--link:hover { transform: none; box-shadow: var(--shadow); }
     .tile.is-dragging { opacity: .35; outline: 2px dashed var(--text-muted); outline-offset: -2px; }
+    .drop-ghost {
+      border: 2px dashed var(--accent);
+      border-radius: var(--radius);
+      background: var(--accent-soft);
+      pointer-events: none;
+    }
+
+    /* Halve tegel: icoon en titel naast elkaar. */
+    .tile--half .tile-main { flex-direction: row; justify-content: flex-start; gap: 10px; padding: 8px 12px; text-align: left; }
+    .tile--half .tile-icon { width: 34px; height: 34px; font-size: 18px; }
+    .tile--half .tile-icon .icon { width: 18px; height: 18px; }
+    .tile--half .tile-icon > .favicon { width: 20px; height: 20px; border-radius: 4px; }
+    .tile--half .tile-icon--letter { font-size: 16px; }
+    .tile--half .tile-title { -webkit-line-clamp: 1; font-size: .88rem; }
+    .tile--half .tile-hint { display: none; }
+    .tile--half .tile-action { top: 50%; width: 26px; height: 26px; transform: translateY(-50%); }
+    .tile--half:not(.is-invalid):hover { transform: translateY(-1px); }
 
     /* ======================================================================
        Snelle links
@@ -776,6 +803,8 @@
     .icon-choice[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-text); }
     .icon-choice--none { font-size: .7rem; }
     .icon-choice--wide { grid-column: span 2; }
+    .icon-choice[hidden] { display: none; }
+    .icon-search { max-width: 320px; margin-bottom: 6px; }
     .item-icon .icon { width: 18px; height: 18px; vertical-align: middle; }
 
     .status { font-size: .78rem; color: var(--text-muted); }
@@ -1116,12 +1145,13 @@
     // background: verkleinde afbeelding (data-URL) achter de tegel, gedimd met backgroundDim procent overlay.
     const TILE_BACKGROUND = { background: '', backgroundDim: 80 };
     const TILE_DEFAULTS = {
-      link: { title: '', icon: '', color: '', openInApp: true, target: { kind: 'url', value: '' }, ...TILE_BACKGROUND },
+      link: { title: '', icon: '', color: '', openInApp: true, target: { kind: 'url', value: '' }, size: 'normal', ...TILE_BACKGROUND },
       links: { title: '', icon: '', links: [], ...TILE_BACKGROUND },
       rss: { title: '', icon: 'favicon', feedUrl: '', maxItems: 8, ...TILE_BACKGROUND },
       calendar: { title: '', icon: '', icsUrl: '', daysAhead: 30, width: 3, height: 2, ...TILE_BACKGROUND }
     };
     const LINK_DEFAULTS = { label: '', url: '' };
+    const LINK_TILE_SIZES = { normal: 'Normaal (1 tegel)', half: 'Half zo hoog' };
 
     const TILE_TYPES = {
       link: { label: 'Gewone tegel', width: 1, height: 1, defaultTitle: 'Nieuwe tegel', icon: 'link' },
@@ -1233,10 +1263,28 @@
       grid: ['Overzicht', 'M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z'],
       layout: ['Indeling', 'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM3 9h18M9 21V9'],
       // Geld en cijfers
-      euro: ['Euro', 'M17.5 6.5A7 7 0 1 0 17.5 17.5M4 10h10M4 14h10'],
+      euro: ['Euro', 'M4 10h12M4 14h9M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2', 'geld valuta financiën'],
       wallet: ['Portemonnee', 'M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 7l12-4v4M16 13.5h.01'],
       pie: ['Taartdiagram', 'M21.21 15.89A10 10 0 1 1 8 2.83M22 12A10 10 0 0 0 12 2v10z'],
-      trending: ['Groei', 'M23 6l-9.5 9.5-5-5L1 18M17 6h6v6'],
+      trending: ['Groei', 'M23 6l-9.5 9.5-5-5L1 18M17 6h6v6', 'stijging omzet'],
+      decline: ['Daling', 'M23 18l-9.5-9.5-5 5L1 6M17 18h6v-6', 'achterstand verlies'],
+      coins: ['Geld', 'M8 2a6 6 0 1 0 0 12 6 6 0 1 0 0-12zM18.09 10.37A6 6 0 1 1 10.34 18M7 6h1v4M16.71 13.88l.7.71-2.82 2.82', 'munten euro betaling'],
+      banknote: ['Betalingen', 'M4 6h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2zM12 10a2 2 0 1 0 0 4 2 2 0 1 0 0-4zM6 12h.01M18 12h.01', 'geld biljet euro incasso'],
+      receipt: ['Factuur', 'M5 2h14v20l-3-2-2 2-2-2-2 2-2-2-3 2zM9 7h6M9 11h6M9 15h4', 'bon rekening nota debiteuren crediteuren'],
+      calculator: ['Rekenmachine', 'M6 2h12a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM8 6h8v4H8zM8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01', 'berekenen begroting financiën'],
+      percent: ['Procent', 'M19 5L5 19M6.5 4a2.5 2.5 0 1 0 0 5 2.5 2.5 0 1 0 0-5zM17.5 15a2.5 2.5 0 1 0 0 5 2.5 2.5 0 1 0 0-5z', 'rente btw korting'],
+      piggy: ['Sparen', 'M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2V5zM2 9v1c0 1.1.9 2 2 2h1M16 11h.01', 'spaarpot budget reserve'],
+      bars: ['Rapportage', 'M3 3v18h18M8 17v-5M13 17V8M18 17V5', 'staafdiagram rapport dashboard kpi'],
+      kanban: ['Planning', 'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8 7v7M12 7v4M16 7v9', 'project taken bord'],
+      audit: ['Controle', 'M9 2h6v4H9zM16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 14l2 2 4-4', 'audit validatie goedkeuren checklist'],
+      contract: ['Contract', 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 18c1.5-2 2.5-2 3 0s1.5 1 3-1', 'overeenkomst handtekening huurcontract'],
+      scale: ['Juridisch', 'M16 16l3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1zM2 16l3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1zM7 21h10M12 3v18M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2', 'recht weegschaal wet beleid'],
+      handshake: ['Samenwerking', 'M11 17l2 2a1 1 0 1 0 3-3M14 14l2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4M21 3l1 11h-2M3 3L2 14l6.5 6.5a1 1 0 1 0 3-3M3 4h8', 'klant relatie partner afspraak deal'],
+      building: ['Kantoor', 'M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18zM2 22h20M10 6h.01M14 6h.01M10 10h.01M14 10h.01M10 14h.01M14 14h.01M10 22v-4h4v4', 'bedrijf organisatie gebouw'],
+      apartment: ['Woningen', 'M3 22V10l6-4v16M9 22V4l12-2v20M2 22h20M13 7h.01M17 7h.01M13 11h.01M17 11h.01M13 15h.01M17 15h.01M5.5 13h.01M5.5 17h.01', 'vastgoed huur flat complex bezit'],
+      landmark: ['Overheid', 'M3 22h18M5 18v-8M9 18v-8M15 18v-8M19 18v-8M3 18h18M12 2l9 5H3z', 'gemeente bank instelling'],
+      idcard: ['Personeel', 'M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zM8 9a2 2 0 1 0 0 4 2 2 0 1 0 0-4zM5 16c.5-1.5 1.6-2 3-2s2.5.5 3 2M14 10h5M14 14h3', 'hr medewerker legitimatie'],
+      presentation: ['Presentatie', 'M2 3h20M3 3v11a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V3M12 16v5M8 21h8M7 11l3-3 3 3 4-4', 'vergadering beamer'],
       target: ['Doel', 'M2 12a10 10 0 1 0 20 0a10 10 0 1 0-20 0M6 12a6 6 0 1 0 12 0a6 6 0 1 0-12 0M10 12a2 2 0 1 0 4 0a2 2 0 1 0-4 0'],
       bag: ['Boodschappen', 'M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0'],
       gift: ['Cadeau', 'M20 12v10H4V12M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z'],
@@ -1488,9 +1536,20 @@
         normalized.width = clamp(Math.round(normalized.width) || 3, 2, 4);
         normalized.height = clamp(Math.round(normalized.height) || 2, 2, 4);
       }
+      if (normalized.type === 'link' && !LINK_TILE_SIZES[normalized.size]) normalized.size = 'normal';
       if (!isImageDataUrl(normalized.background)) normalized.background = '';
       normalized.backgroundDim = clamp(Math.round(normalized.backgroundDim) || 80, 40, 95);
+      const position = normalizePosition(tile.position);
+      if (position) normalized.position = position;
       return normalized;
+    }
+
+    // Vrije plaats op het grid: kolom (1–8) en rij in halve tegels (1–16). Zonder positie volgt de tegel de lijst.
+    function normalizePosition(position) {
+      if (!isPlainObject(position)) return null;
+      const { col, row } = position;
+      if (!Number.isInteger(col) || !Number.isInteger(row) || col < 1 || col > GRID_MAX || row < 1 || row > GRID_MAX * 2) return null;
+      return { col, row };
     }
 
     // Neemt de structuur van `defaults` over; waarden uit `value` blijven alleen staan als hun type klopt.
@@ -1635,46 +1694,97 @@
 
     function renderGrid() {
       const { gridColumns, gridRows } = config.appearance;
-      const usedRows = Math.min(gridRows, Math.max(2, Math.ceil(countCells(config.tiles, gridColumns) / gridColumns)));
+      const layout = layoutTiles(config.tiles, gridColumns);
+      const usedRows = clamp(Math.ceil(layout.bottom / 2), 2, gridRows);
 
       const grid = $('#tileGrid');
       grid.style.setProperty('--cfg-cols', gridColumns);
       grid.dataset.cols = gridColumns;
       grid.style.setProperty('--fit-rows', usedRows);
 
-      const tiles = config.tiles.map(buildTile).filter(Boolean);
+      // In de volgorde waarin ze op het scherm staan, zodat Tab en een smal venster dezelfde volgorde volgen.
+      const ordered = [...config.tiles].sort((a, b) => comparePlaces(layout.places.get(a.id), layout.places.get(b.id)));
+      const tiles = ordered.map(tile => buildTile(tile, layout.places.get(tile.id))).filter(Boolean);
       if (!tiles.length) {
         tiles.push(el('p', { class: 'grid-empty' }, 'Nog geen tegels. Voeg tegels toe via ⚙ Instellingen.'));
       }
       grid.replaceChildren(...tiles);
     }
 
-    // Breedte en hoogte van een tegel in cellen; nooit breder dan het grid. De agenda heeft een eigen, instelbare maat.
+    function comparePlaces(a, b) {
+      return a.row - b.row || a.col - b.col;
+    }
+
+    // Grootte van een tegel in grid-eenheden: kolommen en rijen van een halve tegel. Nooit breder dan het grid.
+    // De agenda heeft een eigen, instelbare maat; een gewone tegel kan half zo hoog zijn.
     function tileSize(tile, columns) {
       const meta = TILE_TYPES[tile.type] ?? { width: 1, height: 1 };
       const width = tile.type === 'calendar' ? tile.width ?? meta.width : meta.width;
-      const height = tile.type === 'calendar' ? tile.height ?? meta.height : meta.height;
-      return { width: Math.min(width, columns), height };
+      const height = tile.type === 'calendar' ? tile.height ?? meta.height : tile.type === 'link' && tile.size === 'half' ? 0.5 : meta.height;
+      return { cols: Math.min(width, columns), rows: height * 2 };
     }
 
+    // Aantal tegelvakken (een halve tegel telt voor een half vak).
     function tileCells(tile, columns) {
-      const { width, height } = tileSize(tile, columns);
-      return width * height;
+      const { cols, rows } = tileSize(tile, columns);
+      return cols * rows / 2;
     }
 
     function countCells(tiles, columns) {
       return tiles.reduce((sum, tile) => sum + tileCells(tile, columns), 0);
     }
 
-    function buildTile(tile) {
+    // Bepaalt waar elke tegel staat. Tegels met een eigen positie krijgen die (zo nodig binnen de kolommen geschoven);
+    // overlapt die met een eerder geplaatste tegel, of heeft de tegel geen positie, dan komt hij op het eerste vrije
+    // vak, van links naar rechts en van boven naar beneden. Rijen zijn halve tegels.
+    function layoutTiles(tiles, columns) {
+      const taken = new Set();
+      const places = new Map();
+      const fits = (col, row, size) => {
+        for (let r = row; r < row + size.rows; r++) {
+          for (let c = col; c < col + size.cols; c++) if (taken.has(`${r},${c}`)) return false;
+        }
+        return true;
+      };
+      const place = (tile, col, row, size) => {
+        for (let r = row; r < row + size.rows; r++) for (let c = col; c < col + size.cols; c++) taken.add(`${r},${c}`);
+        places.set(tile.id, { col, row, ...size });
+      };
+
+      const pending = [];
+      for (const tile of tiles) {
+        const size = tileSize(tile, columns);
+        const col = tile.position ? clamp(tile.position.col, 1, columns - size.cols + 1) : 0;
+        if (col && fits(col, tile.position.row, size)) place(tile, col, tile.position.row, size);
+        else pending.push([tile, size]);
+      }
+      for (const [tile, size] of pending) {
+        let placed = false;
+        for (let row = 1; !placed; row++) {
+          for (let col = 1; col <= columns - size.cols + 1 && !placed; col++) {
+            if (fits(col, row, size)) {
+              place(tile, col, row, size);
+              placed = true;
+            }
+          }
+        }
+      }
+      const bottom = Math.max(0, ...[...places.values()].map(p => p.row + p.rows - 1));
+      return { places, bottom };
+    }
+
+    function buildTile(tile, place) {
       const builder = TILE_BUILDERS[tile.type];
       if (!builder) return null;
       const node = builder(tile);
       node.dataset.tileId = tile.id;
       node.draggable = true;
-      const { width, height } = tileSize(tile, config.appearance.gridColumns);
-      node.style.setProperty('--span-cols', width);
-      node.style.setProperty('--span-rows', height);
+      node.style.setProperty('--col', place.col);
+      node.style.setProperty('--row', place.row);
+      node.style.setProperty('--span-cols', place.cols);
+      node.style.setProperty('--span-cols-narrow', Math.min(place.cols, 2));
+      node.style.setProperty('--span-rows', place.rows);
+      if (tile.type === 'link' && tile.size === 'half') node.classList.add('tile--half');
       // Achtergrondafbeelding, gedimd met een overlay in de kleur van de tegel.
       if (isImageDataUrl(tile.background)) {
         node.classList.add('has-background');
@@ -2007,7 +2117,7 @@
     function workerFavicon(host) {
       if (!faviconRequests.has(host)) {
         faviconRequests.set(host, (async () => {
-          const key = `favicon:${host}`;
+          const key = `favicon2:${host}`; // 2: opnieuw ophalen na Worker 1.2.0 (betere volgorde bij doorverwijzingen)
           const cached = await idbGet('cache', key).catch(() => null);
           const maxAge = cached?.blob ? FAVICON_MAX_AGE_MS : FAVICON_MISSING_MAX_AGE_MS;
           const fromCache = () => (cached?.blob ? { url: URL.createObjectURL(cached.blob) } : null);
@@ -2133,52 +2243,133 @@
       });
     }
 
-    // Tegels verslepen op het dashboard: de andere tegels schuiven live mee; bij loslaten wordt de volgorde bewaard.
-    // Loslaten buiten het grid (of Esc) zet alles terug.
+    // Tegels vrij verslepen op het dashboard. Een gestippeld vak toont waar de tegel komt; dat mag ook een leeg vak
+    // zijn, los van de andere tegels. Bij loslaten krijgen alle tegels een vaste plek, zodat ze blijven staan waar ze
+    // staan. Een tegel die in de weg staat, ruilt van plek met de gesleepte tegel (of schuift naar het eerste vrije
+    // vak als hij daar niet past). Loslaten buiten het venster, of Esc, verandert niets.
     function bindTileDragging(grid) {
-      let draggedId = null;
-      const draggedTile = () => $(`[data-tile-id="${CSS.escape(draggedId)}"]`, grid);
+      let drag = null; // { id, offsetX, offsetY, target: { col, row } }
 
       grid.addEventListener('dragstart', event => {
         const tile = event.target.closest?.('[data-tile-id]');
-        if (!tile) return;
-        draggedId = tile.dataset.tileId;
+        if (!tile || isNarrowGrid(grid)) {
+          if (tile) event.preventDefault();
+          return;
+        }
+        const rect = tile.getBoundingClientRect();
+        drag = { id: tile.dataset.tileId, offsetX: event.clientX - rect.left, offsetY: event.clientY - rect.top, target: null };
         event.dataTransfer.effectAllowed = 'move';
         event.dataTransfer.setData('text/plain', tile.querySelector('.tile-title, .tile-heading')?.textContent ?? '');
         grid.classList.add('is-sorting');
         requestAnimationFrame(() => tile.classList.add('is-dragging'));
       });
 
-      grid.addEventListener('dragover', event => {
-        if (!draggedId) return;
+      document.addEventListener('dragover', event => {
+        if (!drag) return;
+        const target = dropCell(grid, drag, event.clientX, event.clientY);
+        if (!target) {
+          drag.target = null;
+          $('.drop-ghost', grid)?.remove();
+          return; // buiten het grid: loslaten doet niets
+        }
         event.preventDefault();
         event.dataTransfer.dropEffect = 'move';
-        const target = event.target.closest?.('[data-tile-id]');
-        const dragged = draggedTile();
-        if (!target || !dragged || target === dragged) return;
-        const tiles = [...grid.children];
-        const after = tiles.indexOf(dragged) < tiles.indexOf(target);
-        target[after ? 'after' : 'before'](dragged);
+        if (drag.target?.col === target.col && drag.target?.row === target.row) return;
+        drag.target = target;
+        showDropGhost(grid, drag.id, target);
       });
 
-      grid.addEventListener('drop', event => {
-        if (!draggedId) return;
+      document.addEventListener('drop', event => {
+        if (!drag) return;
         event.preventDefault();
-        const order = [...grid.querySelectorAll('[data-tile-id]')].map(tile => tile.dataset.tileId);
-        const changed = order.join() !== config.tiles.map(tile => tile.id).join();
-        if (changed) {
-          config.tiles.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
-          saveData();
-        }
+        if (drag.target && moveTileTo(config.tiles, drag.id, drag.target, config.appearance.gridColumns)) saveData();
       });
 
       grid.addEventListener('dragend', () => {
-        if (!draggedId) return;
-        draggedId = null;
+        if (!drag) return;
+        drag = null;
         grid.classList.remove('is-sorting');
-        // Na loslaten (of annuleren) het grid opnieuw opbouwen vanuit de bewaarde volgorde.
         renderGrid();
       });
+    }
+
+    function isNarrowGrid(grid) {
+      return getComputedStyle(grid).gridTemplateColumns.split(' ').length !== config.appearance.gridColumns;
+    }
+
+    // Het vak onder de linkerbovenhoek van de gesleepte tegel, afgerond naar het dichtstbijzijnde vak en binnen het grid.
+    // Het grid loopt door tot het ingestelde aantal rijen, ook als de onderste rijen nog leeg zijn. Daarbuiten: null.
+    function dropCell(grid, drag, x, y) {
+      const tile = config.tiles.find(item => item.id === drag.id);
+      const columns = config.appearance.gridColumns;
+      const size = tileSize(tile, columns);
+      const style = getComputedStyle(grid);
+      const cell = parseFloat(style.gridTemplateColumns);
+      const gap = parseFloat(style.columnGap) || 0;
+      const half = (cell - gap) / 2;
+      const rect = grid.getBoundingClientRect();
+      const width = columns * cell + (columns - 1) * gap;
+      const left = rect.left + (rect.width - width) / 2;
+      const height = config.appearance.gridRows * (cell + gap);
+      if (x < left - gap || x > left + width + gap || y < rect.top - gap || y > rect.top + Math.max(height, rect.height) + gap) return null;
+      const col = Math.round((x - drag.offsetX - left) / (cell + gap)) + 1;
+      const row = Math.round((y - drag.offsetY - rect.top) / (half + gap)) + 1;
+      const maxRow = Math.max(1, config.appearance.gridRows * 2 - size.rows + 1);
+      return { col: clamp(col, 1, columns - size.cols + 1), row: clamp(row, 1, maxRow) };
+    }
+
+    function showDropGhost(grid, id, target) {
+      const tile = config.tiles.find(item => item.id === id);
+      const size = tileSize(tile, config.appearance.gridColumns);
+      let ghost = $('.drop-ghost', grid);
+      if (!ghost) {
+        ghost = el('div', { class: 'drop-ghost', 'aria-hidden': 'true' });
+        grid.append(ghost);
+      }
+      ghost.style.setProperty('--col', target.col);
+      ghost.style.setProperty('--row', target.row);
+      ghost.style.setProperty('--span-cols', size.cols);
+      ghost.style.setProperty('--span-rows', size.rows);
+    }
+
+    // Zet tegel `id` op `target`. Geeft false als er niets verandert.
+    function moveTileTo(tiles, id, target, columns) {
+      const before = layoutTiles(tiles, columns).places;
+      const from = before.get(id);
+      if (!from || (from.col === target.col && from.row === target.row)) return false;
+
+      // Alle tegels vastzetten waar ze nu staan, daarna de gesleepte tegel verplaatsen.
+      for (const tile of tiles) {
+        const place = before.get(tile.id);
+        tile.position = { col: place.col, row: place.row };
+      }
+      const moved = tiles.find(tile => tile.id === id);
+      moved.position = { ...target };
+
+      const overlaps = (a, b) => a.col < b.col + b.cols && b.col < a.col + a.cols && a.row < b.row + b.rows && b.row < a.row + a.rows;
+      const area = { ...target, cols: from.cols, rows: from.rows };
+      const inTheWay = tiles.filter(tile => tile.id !== id && overlaps(before.get(tile.id), area));
+      const waiting = new Set(inTheWay);
+      for (const tile of inTheWay) {
+        // Ruilen: naar de oude plek van de gesleepte tegel, zo dicht mogelijk bij de oorspronkelijke kolom.
+        waiting.delete(tile);
+        const size = before.get(tile.id);
+        const swap = { col: clamp(from.col, 1, columns - size.cols + 1), row: from.row, cols: size.cols, rows: size.rows };
+        const others = tiles
+          .filter(other => other !== tile && other.position && !waiting.has(other))
+          .map(other => ({ ...other.position, cols: before.get(other.id).cols, rows: before.get(other.id).rows }));
+        if (others.some(other => overlaps(other, swap))) delete tile.position;
+        else tile.position = { col: swap.col, row: swap.row };
+      }
+
+      // De lijst in schermvolgorde houden: dan klopt de volgorde in Instellingen en bij Tab.
+      const after = layoutTiles(tiles, columns).places;
+      for (const tile of tiles) {
+        const place = after.get(tile.id);
+        tile.position = { col: place.col, row: place.row };
+      }
+      tiles.sort((a, b) => comparePlaces(after.get(a.id), after.get(b.id)));
+      return true;
     }
 
     function handleTileClick(event) {
@@ -2918,6 +3109,7 @@
         rerenderSettings();
       },
       'move-item': moveItem,
+      'reset-layout': resetLayout,
       'remove-item': removeItem,
       'set-accent': button => {
         draft.appearance.accentColor = button.dataset.color;
@@ -2995,7 +3187,7 @@
       if (used > capacity) {
         return {
           section: 'tiles',
-          message: `De tegels hebben ${used} cellen nodig, maar het grid heeft er ${capacity}. ` +
+          message: `De tegels hebben ${formatNumber(used)} cellen nodig, maar het grid heeft er ${capacity}. ` +
             'Maak het grid groter (Uiterlijk) of verwijder tegels.'
         };
       }
@@ -3062,6 +3254,7 @@
     function handleSettingsInput(event) {
       const control = event.target;
       if (control.id === 'placeSearch') searchPlaces(control.value);
+      if (control.matches('[data-icon-search]')) filterIcons(control);
       const path = control.dataset.path;
       if (!path || !draft) return;
       setPath(draft, path, readControl(control));
@@ -3105,15 +3298,18 @@
     }
 
     function addTile() {
-      const type = $('#newTileType').value;
+      const choice = $('#newTileType').value;
+      const half = choice === 'link-half';
+      const type = half ? 'link' : choice;
       const meta = TILE_TYPES[type];
+      const defaults = { ...structuredClone(TILE_DEFAULTS[type]), ...(half ? { size: 'half' } : {}) };
       const { gridColumns, gridRows } = draft.appearance;
-      if (countCells(draft.tiles, gridColumns) + tileCells({ type, ...TILE_DEFAULTS[type] }, gridColumns) > gridColumns * gridRows) {
+      if (countCells(draft.tiles, gridColumns) + tileCells({ type, ...defaults }, gridColumns) > gridColumns * gridRows) {
         toast(`Er is geen ruimte meer voor een ${meta.label.toLowerCase()}. ` +
           'Maak het grid groter via Uiterlijk, of verwijder een tegel.');
         return;
       }
-      const tile = { id: uid(), type, ...structuredClone(TILE_DEFAULTS[type]), title: meta.defaultTitle, icon: meta.icon };
+      const tile = { id: uid(), type, ...defaults, title: meta.defaultTitle, icon: meta.icon };
       draft.tiles.push(tile);
       openTileEditor(tile.id);
     }
@@ -3130,6 +3326,14 @@
       const to = from + Number(button.dataset.dir);
       if (to < 0 || to >= list.length) return;
       [list[from], list[to]] = [list[to], list[from]];
+      // Vrij geplaatste tegels ruilen ook van plek, zodat omhoog/omlaag zichtbaar effect heeft.
+      if (list === draft.tiles) [list[from].position, list[to].position] = [list[to].position, list[from].position];
+      for (const item of list) if (item.position === undefined) delete item.position;
+      rerenderSettings();
+    }
+
+    function resetLayout() {
+      for (const tile of draft.tiles) delete tile.position;
       rerenderSettings();
     }
 
@@ -3287,8 +3491,8 @@
       const used = countCells(draft.tiles, gridColumns);
       return [
         el('p', { class: `capacity${used > capacity ? ' is-over' : ''}` },
-          `${used} van ${capacity} cellen gebruikt (grid ${gridColumns} × ${gridRows}). ` +
-          'Tip: je kunt tegels ook op het dashboard zelf verslepen.'),
+          `${formatNumber(used)} van ${capacity} cellen gebruikt (grid ${gridColumns} × ${gridRows}). ` +
+          'Tip: sleep tegels op het dashboard naar elke gewenste plek, ook naar een leeg vak.'),
         draft.tiles.length
           ? el('ul', { class: 'settings-list' }, draft.tiles.map((tile, index) => el('li', { class: 'settings-list-item' },
               el('span', { class: 'item-icon', 'aria-hidden': 'true' }, buildTileGlyph(tile) ?? initial(tile.title)),
@@ -3300,15 +3504,22 @@
           : el('p', { class: 'muted' }, 'Nog geen tegels.'),
         el('div', { class: 'inline add-row' },
           el('select', { id: 'newTileType', 'aria-label': 'Soort tegel' },
-            Object.entries(TILE_TYPES).map(([type, meta]) => el('option', { value: type }, meta.label))),
-          el('button', { class: 'btn btn--primary', type: 'button', 'data-action': 'add-tile' }, icon('plus'), 'Tegel toevoegen'))
+            Object.entries(TILE_TYPES).map(([type, meta]) => el('option', { value: type }, meta.label)),
+            el('option', { value: 'link-half' }, 'Gewone tegel, half zo hoog')),
+          el('button', { class: 'btn btn--primary', type: 'button', 'data-action': 'add-tile' }, icon('plus'), 'Tegel toevoegen')),
+        draft.tiles.some(tile => tile.position)
+          ? el('div', { class: 'inline' },
+              el('button', { class: 'btn', type: 'button', 'data-action': 'reset-layout' }, icon('grid'), 'Tegels aaneensluiten'),
+              el('span', { class: 'field-hint' }, 'Wist de vrije plaatsen: de tegels sluiten weer aan in de volgorde van deze lijst.'))
+          : null
       ];
     }
 
     function describeTile(tile) {
       if (tile.type === 'link') {
         const { kind, value } = tile.target;
-        return kind === 'session-file' ? TARGET_KINDS[kind] : `${TARGET_KINDS[kind] ?? 'Doel'}: ${value || '—'}`;
+        const target = kind === 'session-file' ? TARGET_KINDS[kind] : `${TARGET_KINDS[kind] ?? 'Doel'}: ${value || '—'}`;
+        return tile.size === 'half' ? `Halve tegel · ${target}` : target;
       }
       if (tile.type === 'links') return `${TILE_TYPES.links.label} · ${tile.links.length} links`;
       if (tile.type === 'rss') return `${TILE_TYPES.rss.label} · ${tile.feedUrl || 'nog geen adres'}`;
@@ -3340,6 +3551,7 @@
                 'Je kiest het bestand bij de eerste klik op de tegel. Na herladen van de pagina kies je het opnieuw: ' +
                 'browsers mogen een gekozen bestand niet onthouden. Gebruik "Lokaal bestand of map" om een vast pad te bewaren.')
             : null,
+          field('Hoogte', selectFor(`${base}.size`, Object.entries(LINK_TILE_SIZES))),
           colorField(tile, base)
         ];
       },
@@ -3410,18 +3622,33 @@
         'data-action': 'set-tile-icon',
         'data-path': `${base}.icon`,
         'data-icon': name,
+        'data-keywords': `${name} ${label} ${TILE_ICONS[name]?.[2] ?? ''}`.toLowerCase(),
         'aria-pressed': String(tile.icon === name),
         title: label,
         'aria-label': label
       }, content);
 
-      return field('Icoon',
+      return field('Icoon', el('div', { class: 'icon-field' },
+        el('input', {
+          type: 'search',
+          class: 'icon-search',
+          placeholder: `Zoek een icoon, bijv. euro (${Object.keys(TILE_ICONS).length} iconen)`,
+          'aria-label': 'Icoon zoeken',
+          'data-icon-search': true
+        }),
         el('div', { class: 'icon-picker', role: 'group', 'aria-label': 'Icoon kiezen' },
           choice('', 'Geen icoon: de eerste letter van de titel', 'Abc', ' icon-choice--none'),
           tile.type === 'rss' || (tile.type === 'link' && tile.target.kind === 'url')
             ? choice('favicon', 'Favicon van de site', 'Favicon', ' icon-choice--none icon-choice--wide')
             : null,
-          Object.entries(TILE_ICONS).map(([name, [label]]) => choice(name, label, icon(name)))));
+          Object.entries(TILE_ICONS).map(([name, [label]]) => choice(name, label, icon(name))))));
+    }
+
+    function filterIcons(search) {
+      const query = search.value.trim().toLowerCase();
+      for (const choice of search.closest('.icon-field').querySelectorAll('.icon-choice')) {
+        choice.hidden = Boolean(query) && !choice.dataset.keywords.includes(query);
+      }
     }
 
     function renderQuickLinkSettings() {
@@ -3659,6 +3886,10 @@
       if (days <= 0) return TIME_FORMAT.format(date);
       if (days < 7) return WEEKDAY_DATE_FORMAT.format(date).replace('.', '');
       return SHORT_DATE_FORMAT.format(date).replace('.', '');
+    }
+
+    function formatNumber(value) {
+      return value.toLocaleString('nl-NL');
     }
 
     function capitalize(text) {

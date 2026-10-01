@@ -10,10 +10,14 @@ Ontwerp, keuzes en fasering staan in [PROJECTPLAN.md](PROJECTPLAN.md).
 
 Alles stel je in via **⚙ Instellingen**. Wijzigingen worden pas bewaard als je op *Opslaan* klikt.
 
-- **Tegels.** Voeg ze toe, bewerk, orden en verwijder ze. Je kunt ze ook direct op het dashboard verslepen. Elke
-  tegel krijgt een grijs lijnicoon uit een set van 87, een eigen teken of het favicon van de site. Elke tegel kan
+- **Tegels.** Voeg ze toe, bewerk, orden en verwijder ze. Op het dashboard sleep je een tegel naar elk vak dat je
+  wilt, ook naar een leeg vak los van de andere tegels; een gestippeld vak toont waar hij komt. Laat je hem los op
+  een andere tegel, dan ruilen ze van plek. *Tegels aaneensluiten* (⚙ → Tegels) wist de vrije plaatsen weer. Elke
+  tegel krijgt een grijs lijnicoon uit een set van 105 (met zoekveld, ook zakelijke iconen zoals euro, factuur en
+  contract), een eigen teken of het favicon van de site. Elke tegel kan
   ook een achtergrondafbeelding krijgen; die wordt gedimd zodat de inhoud leesbaar blijft. Er zijn vier soorten:
-  - **Gewone tegel.** Opent een website, een lokaal bestand of map, of een bestand dat je per sessie kiest.
+  - **Gewone tegel.** Opent een website, een lokaal bestand of map, of een bestand dat je per sessie kiest. Ook
+    als *halve tegel*: half zo hoog, met icoon en titel naast elkaar; twee passen er in één vak.
     Een lokaal pad plak je in, bijvoorbeeld via rechtsklik → *Als pad kopiëren* in Verkenner.
   - **Link-tegel.** Een lijstje links.
   - **RSS-tegel (2 × 1).** De nieuwste berichten van een RSS- of Atom-feed, met het favicon van de site als icoon.

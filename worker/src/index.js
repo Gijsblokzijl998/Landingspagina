@@ -15,7 +15,7 @@
  * niets, dus de sleutel is de echte beveiliging. Er worden geen URL's of sleutels gelogd.
  */
 
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
 
 const FAVICON_CACHE_SECONDS = 7 * 24 * 3600;
 const FAVICON_MISSING_CACHE_SECONDS = 24 * 3600;
@@ -121,9 +121,11 @@ async function proxy(target, pathname, route, env, ctx) {
   return withCors(response, 'MISS');
 }
 
-// Zoekt het favicon van een site. Een server ziet, anders dan de browser, of een bron echt een icoon heeft:
-// eerst het icoon uit de HTML van de site (ook na een doorverwijzing, bv. naar een inlogpagina), dan /favicon.ico,
-// dan Google voor de host en ten slotte Google voor het hoofddomein. Niets gevonden: 204 No Content.
+// Zoekt het favicon van een site. Een server ziet, anders dan de browser, of een bron echt een icoon heeft.
+// Volgorde: het icoon uit de HTML van de site zelf, /favicon.ico, Google voor de host; dan pas een pagina op een
+// ander domein waar de site naar doorverwijst (een inlogpagina zoals bij Dynamics 365 is bruikbaar, een
+// cookiemelding zoals bij Tweakers/DPG Media niet), en ten slotte Google voor het hoofddomein.
+// Niets gevonden: 204 No Content.
 async function favicon(value, ctx) {
   let site;
   try {
@@ -137,11 +139,13 @@ async function favicon(value, ctx) {
 
   const host = site.hostname.toLowerCase();
   const cache = caches.default;
-  const cacheKey = new Request(`https://cache.landingspagina.invalid/favicon?host=${encodeURIComponent(host)}`);
+  const cacheKey = new Request(`https://cache.landingspagina.invalid/favicon/v2?host=${encodeURIComponent(host)}`);
   const cached = await cache.match(cacheKey);
   if (cached) return withCors(cached, 'HIT');
 
-  const candidates = [];
+  const domain = registrableDomain(host);
+  const ownPage = [];
+  const otherPage = [];
   try {
     const page = await fetch(`${site.protocol}//${host}/`, {
       headers: { Accept: 'text/html', 'User-Agent': 'Mozilla/5.0 (compatible; Landingspagina-dashboard)' },
@@ -150,14 +154,14 @@ async function favicon(value, ctx) {
     });
     if ((page.headers.get('Content-Type') ?? '').includes('html')) {
       const html = new TextDecoder().decode(await readLimited(page, 512 * 1024).catch(() => new Uint8Array()));
-      const base = page.url || `${site.protocol}//${host}/`; // eindadres na eventuele doorverwijzing
-      candidates.push(...iconLinks(html, base), new URL('/favicon.ico', base).href);
+      const base = new URL(page.url || `${site.protocol}//${host}/`); // eindadres na eventuele doorverwijzing
+      const found = [...iconLinks(html, base.href), new URL('/favicon.ico', base).href];
+      (registrableDomain(base.hostname.toLowerCase()) === domain ? ownPage : otherPage).push(...found);
     }
   } catch {
     // Site niet bereikbaar: de andere bronnen kunnen het icoon nog kennen.
   }
-  const domain = registrableDomain(host);
-  candidates.push(`https://${host}/favicon.ico`, googleFavicon(host));
+  const candidates = [...ownPage, `https://${host}/favicon.ico`, googleFavicon(host), ...otherPage];
   if (domain !== host) candidates.push(googleFavicon(domain));
 
   for (const candidate of [...new Set(candidates)]) {

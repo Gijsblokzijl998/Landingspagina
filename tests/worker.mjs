@@ -30,6 +30,14 @@ globalThis.fetch = async (url, init) => {
     Object.defineProperty(r, 'url', { value: 'https://login.microsoftonline.com/common/oauth2/authorize' });
     return r;
   }
+  if (u.hostname === 'tweakers.net' && u.pathname === '/') {
+    // Zoals Tweakers: zonder cookies eerst naar de cookiemelding van DPG Media, met een eigen icoon.
+    const r = new Response('<html><link rel="icon" href="/static/dpg.ico"></html>', { headers: { 'Content-Type': 'text/html' } });
+    Object.defineProperty(r, 'url', { value: 'https://myprivacy.dpgmedia.net/consent?siteKey=x' });
+    return r;
+  }
+  if (u.hostname === 'myprivacy.dpgmedia.net') return new Response(new Uint8Array([0, 0, 1, 0, 3]), { headers: { 'Content-Type': 'image/x-icon' } });
+  if (u.hostname === 'tweakers.net' && u.pathname === '/favicon.ico') return new Response(new Uint8Array([0, 0, 1, 0, 4]), { headers: { 'Content-Type': 'image/vnd.microsoft.icon' } });
   if (u.hostname === 'aadcdn.msftauth.net') return new Response(new Uint8Array([0, 0, 1, 0, 7]), { headers: { 'Content-Type': 'image/x-icon' } });
   if (u.hostname === 't1.gstatic.com') {
     return /url=https%3A%2F%2Fdynamics\.com/.test(url) ? png() : new Response('', { status: 404 });
@@ -123,6 +131,9 @@ r = await fav('https://vechtdalwonen.operations.eu.dynamics.com/');
 check('Dynamics: icoon van de inlogpagina na doorverwijzing', r.status === 200 && upstreamCalls.includes('https://aadcdn.msftauth.net/shared/favicon.ico'), JSON.stringify(r));
 r = await fav('https://vechtdalwonen-uat.sandbox.operations.eu.dynamics.com/?cmp=1&mi=DefaultDashboard');
 check('Dynamics UAT: Google kent host niet → hoofddomein dynamics.com', r.status === 200 && r.type === 'image/png' && upstreamCalls.some(u => u.includes('url=https%3A%2F%2Fdynamics.com')), JSON.stringify(r));
+favBefore = calls();
+r = await fav('https://tweakers.net');
+check('Tweakers: eigen /favicon.ico wint van het icoon van de cookiemelding', r.status === 200 && r.type === 'image/vnd.microsoft.icon' && !upstreamCalls.slice(favBefore).some(u => u.includes('dpg.ico')), JSON.stringify(r));
 r = await fav('https://niets.example/');
 check('niets gevonden → 204 (geen standaardplaatje)', r.status === 204 && r.cors === '*');
 r = await worker.fetch(new Request('https://landingspagina.test.workers.dev/favicon?url=https%3A%2F%2Fsite.example', { headers: { 'X-Dashboard-Key': 'fout' } }), env, ctx);

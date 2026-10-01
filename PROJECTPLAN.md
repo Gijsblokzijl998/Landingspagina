@@ -90,7 +90,10 @@ Landingspagina/
 ### 3.2 Hoofdcontainer (`#mainContainer`) met het tegelgrid (`.grid`)
 - Een CSS-grid met **2–8 kolommen × 2–8 rijen**. De agenda is minstens 2 breed, dus minimaal 2 kolommen. De cellen
   zijn vierkant en schalen mee met het venster.
-- Tegels staan in de volgorde van de configuratie. `grid-auto-flow: dense` vult gaten op die door brede tegels ontstaan.
+- Het grid rekent in halve rijen: een gewone tegel beslaat er twee, een halve tegel één.
+- Een tegel die op het dashboard is versleept, heeft een vaste plek (`position: { col, row }`) en mag los van de
+  andere staan. Tegels zonder plek vullen het eerste vrije vak, in de volgorde van de configuratie (`layoutTiles`).
+  In een smal venster gelden de plekken niet en staan de tegels in schermvolgorde onder elkaar.
 - De instellingen bewaken de capaciteit: kolommen × rijen cellen, waarbij elke tegel breedte × hoogte cellen telt.
 - Elke tegel kan een eigen achtergrondafbeelding krijgen. Een overlay in de kleur van de tegel dimt die (40–95 %),
   zodat de inhoud leesbaar blijft.
@@ -493,11 +496,13 @@ Worker en kan eventueel naar voren.
    - toegankelijkheid: axe-core zonder bevindingen in licht en donker; agenda-contrast en toetsenbordtoegang verbeterd;
    - beveiliging: CSP met SHA-256 van de twee scripts, `connect-src` alleen Open-Meteo en `*.workers.dev`;
      Worker-adressen buiten workers.dev worden met uitleg geweigerd;
-   - tests in de repo (`npm test`, nu 15 suites en ruim 300 controles) en README afgerond.
+   - tests in de repo (`npm test`, nu 16 suites en ruim 330 controles) en README afgerond.
 10. Wensen na gebruik op Windows/Edge, per ronde verwerkt:
     - brede RSS-tegel (2 × 1) met één regel per bericht, compacte links en agenda, snelle links zonder pil,
       favicons via de Worker (`/favicon`, versie 1.1.0), ook voor Dynamics 365;
     - grid tot 8 × 8, agenda 3 breed, korte datum bij berichten;
     - favicon van de site als icoon van de RSS-tegel (configversie 3), datum vóór elk bericht en agendatijden in de
-      accentkleur, breedte en hoogte van de agenda instelbaar, gedimde achtergrondafbeelding per tegel.
+      accentkleur, breedte en hoogte van de agenda instelbaar, gedimde achtergrondafbeelding per tegel;
+    - tegels vrij plaatsen (ook met lege vakken ertussen), halve tegels, 18 zakelijke iconen en een zoekveld,
+      smallere tijdkolom in de agenda, Worker 1.2.0 (favicon bij sites met een cookiemelding, zoals Tweakers).
 11. Verdere wensen of problemen: per onderwerp bijstellen. samen kijken en waar nodig het plan bijstellen. Dit document wordt bijgewerkt als keuzes veranderen.
