@@ -1,0 +1,932 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mijn Dashboard</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='2' width='12' height='12' rx='3' fill='%232563eb'/%3E%3Crect x='18' y='2' width='12' height='12' rx='3' fill='%2360a5fa'/%3E%3Crect x='2' y='18' width='12' height='12' rx='3' fill='%2360a5fa'/%3E%3Crect x='18' y='18' width='12' height='12' rx='3' fill='%232563eb'/%3E%3C/svg%3E">
+  <script>
+    // Thema vóór de eerste paint zetten, zodat er geen witte flits is (sleutel = STORAGE_KEYS.theme).
+    (function () {
+      var theme = null;
+      try { theme = localStorage.getItem('lp:theme'); } catch (e) {}
+      if (theme !== 'light' && theme !== 'dark') {
+        theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      document.documentElement.dataset.theme = theme;
+    })();
+  </script>
+  <style>
+    /* ======================================================================
+       Thema (CSS custom properties)
+       ====================================================================== */
+    :root {
+      --bg: #eef1f6;
+      --surface: #ffffff;
+      --surface-hover: #f6f8fb;
+      --border: #e1e5ed;
+      --text: #141821;
+      --text-muted: #5b6474;
+      --accent: #2563eb;
+      --accent-text: color-mix(in srgb, var(--accent) 85%, black);
+      --accent-soft: color-mix(in srgb, var(--accent) 12%, transparent);
+      --shadow: 0 1px 2px rgb(16 24 40 / .05), 0 2px 8px rgb(16 24 40 / .06);
+      --shadow-hover: 0 4px 10px rgb(16 24 40 / .08), 0 14px 28px rgb(16 24 40 / .10);
+      --backdrop: rgb(15 18 25 / .45);
+
+      --radius: 16px;
+      --radius-sm: 12px;
+      --gap: 16px;
+      --page-pad: clamp(16px, 4vw, 40px);
+      --chrome-h: 210px; /* header + snelle links + marges: begrenst de tegelhoogte */
+      --font: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+      color-scheme: light;
+    }
+
+    [data-theme="dark"] {
+      --bg: #0d1016;
+      --surface: #161a22;
+      --surface-hover: #1d222c;
+      --border: #272d39;
+      --text: #e7eaf0;
+      --text-muted: #9aa3b2;
+      --accent-text: color-mix(in srgb, var(--accent) 55%, white);
+      --accent-soft: color-mix(in srgb, var(--accent) 22%, transparent);
+      --shadow: 0 1px 2px rgb(0 0 0 / .35), 0 2px 8px rgb(0 0 0 / .25);
+      --shadow-hover: 0 6px 14px rgb(0 0 0 / .4), 0 16px 32px rgb(0 0 0 / .35);
+      --backdrop: rgb(0 0 0 / .6);
+      color-scheme: dark;
+    }
+
+    [data-tile-style="square"] {
+      --radius: 4px;
+      --radius-sm: 3px;
+    }
+
+    /* ======================================================================
+       Basis
+       ====================================================================== */
+    *, *::before, *::after { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg);
+      color: var(--text);
+      font: 15px/1.45 var(--font);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    h1, h2, h3, p { margin: 0; }
+    a { color: inherit; }
+    button { font: inherit; color: inherit; }
+    :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+    .icon-btn {
+      display: inline-grid;
+      place-items: center;
+      flex: none;
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--surface);
+      color: var(--text-muted);
+      box-shadow: var(--shadow);
+      cursor: pointer;
+      transition: color .15s, background-color .15s;
+    }
+    .icon-btn:hover { color: var(--text); background: var(--surface-hover); }
+    .icon-btn svg {
+      width: 20px;
+      height: 20px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface);
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .btn:hover { background: var(--surface-hover); }
+
+    .muted { color: var(--text-muted); }
+
+    /* ======================================================================
+       Header
+       ====================================================================== */
+    .site-header {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      grid-template-areas: "left center right";
+      align-items: center;
+      gap: 16px;
+      padding: 18px var(--page-pad) 14px;
+    }
+    .header-left { grid-area: left; display: flex; align-items: center; min-width: 0; }
+    .header-center { grid-area: center; text-align: center; min-width: 0; }
+    .header-right {
+      grid-area: right;
+      justify-self: end;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo { display: block; max-width: 160px; max-height: 44px; object-fit: contain; }
+
+    .page-title {
+      font-size: clamp(1.25rem, 1rem + 1vw, 1.75rem);
+      font-weight: 650;
+      letter-spacing: -.01em;
+      line-height: 1.2;
+    }
+    .welcome { margin-top: 2px; color: var(--text-muted); }
+
+    .clock {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      margin-right: 4px;
+      line-height: 1.15;
+    }
+    .clock-time { font-size: 1.35rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .clock-date { display: block; font-size: .8rem; color: var(--text-muted); }
+    .clock-date::first-letter { text-transform: uppercase; }
+
+    /* De themaknop toont wat je krijgt: een maan in licht thema, een zon in donker thema. */
+    [data-theme="dark"] .icon-moon,
+    :root:not([data-theme="dark"]) .icon-sun { display: none; }
+
+    @media (max-width: 720px) {
+      .site-header {
+        grid-template-columns: auto 1fr;
+        grid-template-areas: "left right" "center center";
+        row-gap: 12px;
+      }
+      .header-center { text-align: left; }
+    }
+
+    /* ======================================================================
+       Hoofdcontainer en tegelgrid
+       ====================================================================== */
+    #mainContainer {
+      flex: 1;
+      container: main / inline-size;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+      padding: 8px var(--page-pad) 32px;
+    }
+
+    .grid {
+      --cols: var(--cfg-cols, 4);
+      --rows: var(--fit-rows, 4);
+      /* Vierkante cellen: zo groot als de breedte en de vensterhoogte (voor de gebruikte rijen) toelaten. */
+      --tile: clamp(120px, min(
+        (100cqi - (var(--cols) - 1) * var(--gap)) / var(--cols),
+        (100dvh - var(--chrome-h) - (var(--rows) - 1) * var(--gap)) / var(--rows)
+      ), 210px);
+      display: grid;
+      grid-template-columns: repeat(var(--cols), var(--tile));
+      grid-auto-rows: var(--tile);
+      grid-auto-flow: row dense;
+      justify-content: center;
+      gap: var(--gap);
+      max-width: 100%;
+    }
+
+    @container main (max-width: 600px) {
+      .grid {
+        --cols: 2;
+        --gap: 12px;
+        --tile: calc((100cqi - var(--gap)) / 2);
+      }
+    }
+
+    .grid-empty {
+      grid-column: 1 / -1;
+      align-self: center;
+      text-align: center;
+      color: var(--text-muted);
+    }
+
+    /* ======================================================================
+       Tegels
+       ====================================================================== */
+    .tile {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      min-height: 0;
+      padding: 14px;
+      overflow: hidden;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    a.tile {
+      text-decoration: none;
+      transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+    }
+    a.tile:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-hover);
+      border-color: color-mix(in srgb, var(--tile-color, var(--accent)) 45%, var(--border));
+    }
+
+    .tile--link {
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      text-align: center;
+    }
+    .tile--link.is-invalid { opacity: .55; }
+
+    .tile-icon {
+      display: grid;
+      place-items: center;
+      flex: none;
+      width: 56px;
+      height: 56px;
+      border-radius: var(--radius-sm);
+      background: color-mix(in srgb, var(--tile-color, var(--accent)) 14%, transparent);
+      font-size: 30px;
+      line-height: 1;
+    }
+    .tile-icon--letter {
+      color: var(--tile-color, var(--accent-text));
+      font-size: 26px;
+      font-weight: 700;
+    }
+
+    .tile-title {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      overflow: hidden;
+      overflow-wrap: anywhere;
+      font-size: .95rem;
+      font-weight: 600;
+      line-height: 1.25;
+    }
+
+    .tile-heading {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 8px;
+      color: var(--text-muted);
+      font-size: .85rem;
+      font-weight: 600;
+    }
+    .tile-heading span:last-child { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+    .tile-body {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    .tile-list { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+    .tile-list a,
+    .tile-list .is-invalid {
+      display: block;
+      padding: 6px 8px;
+      overflow: hidden;
+      border-radius: 8px;
+      font-size: .9rem;
+      text-decoration: none;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    .tile-list a:hover { background: var(--accent-soft); color: var(--accent-text); }
+    .tile-list .is-invalid { color: var(--text-muted); text-decoration: line-through; }
+
+    .tile-state {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      padding: 8px;
+      color: var(--text-muted);
+      font-size: .85rem;
+      text-align: center;
+    }
+
+    .tile--calendar { grid-column: span 2; grid-row: span 2; }
+
+    /* ======================================================================
+       Snelle links
+       ====================================================================== */
+    .quick-links {
+      display: flex;
+      gap: 8px;
+      max-width: 100%;
+      padding: 4px;
+      overflow-x: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+    /* Gecentreerd als alles past, gewoon scrollbaar als het niet past. */
+    .quick-link:first-child { margin-left: auto; }
+    .quick-link:last-child { margin-right: auto; }
+    .quick-link {
+      flex: none;
+      padding: 7px 14px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      font-size: .875rem;
+      font-weight: 500;
+      text-decoration: none;
+      transition: color .15s, border-color .15s;
+    }
+    .quick-link:hover { border-color: var(--accent); color: var(--accent-text); }
+
+    /* ======================================================================
+       Instellingenmodal
+       ====================================================================== */
+    .settings-modal {
+      width: min(880px, 100vw - 32px);
+      height: min(620px, 100dvh - 32px);
+      max-width: none;
+      max-height: none;
+      padding: 0;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: var(--surface);
+      color: var(--text);
+      box-shadow: 0 24px 64px rgb(0 0 0 / .3);
+    }
+    .settings-modal::backdrop { background: var(--backdrop); backdrop-filter: blur(2px); }
+
+    .settings { display: grid; grid-template-rows: auto 1fr auto; height: 100%; }
+
+    .settings-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px 14px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    .settings-header h2 { font-size: 1.15rem; font-weight: 650; }
+
+    .settings-body { display: grid; grid-template-columns: 210px 1fr; min-height: 0; }
+
+    .settings-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 12px;
+      overflow: auto;
+      border-right: 1px solid var(--border);
+    }
+    .settings-nav-item {
+      flex: none;
+      padding: 9px 12px;
+      border: 0;
+      border-radius: 10px;
+      background: none;
+      color: var(--text-muted);
+      text-align: left;
+      cursor: pointer;
+    }
+    .settings-nav-item:hover { background: var(--surface-hover); color: var(--text); }
+    .settings-nav-item[aria-current="page"] {
+      background: var(--accent-soft);
+      color: var(--accent-text);
+      font-weight: 600;
+    }
+
+    .settings-panel { display: grid; align-content: start; gap: 8px; padding: 20px 24px; overflow: auto; }
+    .settings-panel h3 { font-size: 1.05rem; font-weight: 650; }
+    .settings-placeholder {
+      margin-top: 12px;
+      padding: 12px 14px;
+      border: 1px dashed var(--border);
+      border-radius: 10px;
+      color: var(--text-muted);
+    }
+
+    .settings-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    @media (max-width: 640px) {
+      .settings-body { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+      .settings-nav {
+        flex-direction: row;
+        border-right: 0;
+        border-bottom: 1px solid var(--border);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition: none !important; animation: none !important; }
+      a.tile:hover { transform: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-left">
+      <img id="logo" class="logo" alt="Logo" hidden>
+    </div>
+
+    <div class="header-center">
+      <h1 id="pageTitle" class="page-title"></h1>
+      <p id="welcomeText" class="welcome" hidden></p>
+    </div>
+
+    <div class="header-right">
+      <div id="weatherWidget" class="weather" hidden></div>
+      <div id="clock" class="clock">
+        <time id="clockTime" class="clock-time"></time>
+        <span id="clockDate" class="clock-date"></span>
+      </div>
+      <button id="themeToggle" class="icon-btn" type="button">
+        <svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+        <svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"/>
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+        </svg>
+      </button>
+      <button id="settingsBtn" class="icon-btn" type="button" aria-label="Instellingen" title="Instellingen" aria-haspopup="dialog">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="mainContainer">
+    <section id="tileGrid" class="grid" aria-label="Tegels"></section>
+    <nav id="quickLinksBar" class="quick-links" aria-label="Snelle links"></nav>
+  </main>
+
+  <dialog id="settingsModal" class="settings-modal" aria-labelledby="settingsTitle">
+    <div class="settings">
+      <div class="settings-header">
+        <h2 id="settingsTitle">Instellingen</h2>
+        <button class="icon-btn" type="button" data-action="close-settings" aria-label="Sluiten" title="Sluiten">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="settings-body">
+        <nav id="settingsNav" class="settings-nav" aria-label="Categorieën"></nav>
+        <section id="settingsPanel" class="settings-panel"></section>
+      </div>
+      <div class="settings-footer">
+        <button class="btn" type="button" data-action="close-settings">Sluiten</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script>
+    'use strict';
+
+    /* ======================================================================
+       Constanten
+       ====================================================================== */
+    const STORAGE_KEYS = {
+      theme: 'lp:theme' // ook gelezen door het script in <head>
+    };
+
+    const THEMES = ['light', 'dark', 'system'];
+    const LINK_PROTOCOLS = ['http:', 'https:', 'mailto:'];
+    const IMAGE_PROTOCOLS = ['http:', 'https:', 'file:', 'data:'];
+
+    const DEFAULT_CONFIG = {
+      version: 1,
+      general: {
+        title: 'Mijn Dashboard',
+        showWelcome: true,
+        welcomeText: '{dagdeel}!',
+        logo: { source: 'none', url: '' }          // 'none' | 'url' | 'upload'
+      },
+      appearance: {
+        theme: 'system',                           // 'light' | 'dark' | 'system'
+        accentColor: '#2563eb',
+        gridColumns: 4,                            // 2–4
+        gridRows: 4,                               // 2–4
+        tileStyle: 'rounded',                      // 'rounded' | 'square'
+        background: { type: 'none', value: '' }    // 'none' | 'color' | 'image'
+      },
+      clock: { enabled: true, showSeconds: false, showDate: true },
+      weather: {
+        enabled: true,
+        location: { name: 'Amsterdam', latitude: 52.374, longitude: 4.89 },
+        unit: 'celsius'                            // 'celsius' | 'fahrenheit'
+      },
+      services: { workerUrl: '', workerKey: '' },
+      tiles: [
+        { id: 't1', type: 'calendar', title: 'Agenda', icon: '📅', icsUrl: '', daysAhead: 30 },
+        { id: 't2', type: 'link', title: 'Outlook', icon: '✉️', color: '', newTab: false,
+          target: { kind: 'url', value: 'https://outlook.office.com/mail/' } },   // kind: 'url' | 'path' | 'session-file'
+        { id: 't3', type: 'link', title: 'Google Agenda', icon: '🗓️', color: '', newTab: false,
+          target: { kind: 'url', value: 'https://calendar.google.com/' } },
+        { id: 't4', type: 'links', title: 'Microsoft 365', icon: '💼', links: [
+          { label: 'Teams', url: 'https://teams.microsoft.com/' },
+          { label: 'OneDrive', url: 'https://onedrive.live.com/' },
+          { label: 'Office', url: 'https://www.office.com/' }
+        ] },
+        { id: 't5', type: 'rss', title: 'Nieuws', icon: '📰', feedUrl: 'https://feeds.nos.nl/nosnieuwsalgemeen', maxItems: 8 }
+      ],
+      quickLinks: {
+        enabled: true,
+        items: [
+          { id: 'q1', label: 'Google', url: 'https://www.google.com/' },
+          { id: 'q2', label: 'Wikipedia', url: 'https://nl.wikipedia.org/' },
+          { id: 'q3', label: 'Buienradar', url: 'https://www.buienradar.nl/' },
+          { id: 'q4', label: 'Google Maps', url: 'https://maps.google.com/' }
+        ]
+      }
+    };
+
+    const SETTINGS_SECTIONS = [
+      { id: 'general', label: 'Algemeen', description: 'Titel, welkomsttekst en logo.' },
+      { id: 'appearance', label: 'Uiterlijk', description: 'Thema, accentkleur, achtergrond, grootte van het grid en tegelstijl.' },
+      { id: 'tiles', label: 'Tegels', description: 'Tegels toevoegen, bewerken, verwijderen en ordenen.' },
+      { id: 'quickLinks', label: 'Snelle links', description: 'De balk met snelle links onder het grid.' },
+      { id: 'weather', label: 'Weer & klok', description: 'Plaats en eenheid voor het weer, en de weergave van de klok.' },
+      { id: 'services', label: 'Koppelingen', description: 'Adres en sleutel van de Cloudflare Worker voor RSS en agenda.' },
+      { id: 'data', label: 'Gegevens', description: 'Exporteren, importeren en terugzetten naar de standaardinstellingen.' }
+    ];
+
+    const TIME_FORMAT = new Intl.DateTimeFormat('nl-NL', { hour: '2-digit', minute: '2-digit' });
+    const TIME_FORMAT_SECONDS = new Intl.DateTimeFormat('nl-NL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const DATE_FORMAT = new Intl.DateTimeFormat('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
+
+    /* ======================================================================
+       State
+       ====================================================================== */
+    let config;
+    let activeSettingsSection = SETTINGS_SECTIONS[0].id;
+    const timers = {};
+    const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
+
+    /* ======================================================================
+       Opslag
+       ====================================================================== */
+    function storageGet(key) {
+      try {
+        return localStorage.getItem(key);
+      } catch {
+        return null;
+      }
+    }
+
+    function storageSet(key, value) {
+      try {
+        localStorage.setItem(key, value);
+      } catch {
+        // Opslag geblokkeerd of vol: de keuze geldt dan alleen voor deze sessie.
+      }
+    }
+
+    function loadData() {
+      const data = structuredClone(DEFAULT_CONFIG);
+      const theme = storageGet(STORAGE_KEYS.theme);
+      if (THEMES.includes(theme)) data.appearance.theme = theme;
+      return data;
+    }
+
+    /* ======================================================================
+       Rendering
+       ====================================================================== */
+    const TILE_BUILDERS = {
+      link: buildLinkTile,
+      links: buildLinksTile,
+      rss: buildRssTile,
+      calendar: buildCalendarTile
+    };
+
+    function renderDashboard() {
+      applyAppearance();
+      renderHeader();
+      renderGrid();
+      renderQuickLinks();
+    }
+
+    function applyAppearance() {
+      const root = document.documentElement;
+      root.style.setProperty('--accent', config.appearance.accentColor);
+      root.dataset.tileStyle = config.appearance.tileStyle;
+      applyTheme();
+    }
+
+    function resolveTheme(preference) {
+      if (preference === 'light' || preference === 'dark') return preference;
+      return darkQuery.matches ? 'dark' : 'light';
+    }
+
+    function applyTheme() {
+      const theme = resolveTheme(config.appearance.theme);
+      document.documentElement.dataset.theme = theme;
+
+      const label = theme === 'dark' ? 'Schakel naar lichte modus' : 'Schakel naar donkere modus';
+      const button = $('#themeToggle');
+      button.setAttribute('aria-label', label);
+      button.title = label;
+    }
+
+    function renderHeader() {
+      const { title, logo } = config.general;
+      $('#pageTitle').textContent = title;
+      document.title = title;
+
+      const logoImage = $('#logo');
+      const logoSrc = logo.source === 'url' ? safeUrl(logo.url, IMAGE_PROTOCOLS) : null;
+      logoImage.hidden = !logoSrc;
+      if (logoSrc) logoImage.src = logoSrc;
+      else logoImage.removeAttribute('src');
+
+      $('#clock').hidden = !config.clock.enabled;
+    }
+
+    function renderWelcome(now) {
+      const { showWelcome, welcomeText } = config.general;
+      const text = welcomeText.replaceAll('{dagdeel}', dayPartGreeting(now));
+      const welcome = $('#welcomeText');
+      welcome.textContent = text;
+      welcome.hidden = !showWelcome || !text.trim();
+    }
+
+    function renderClock(now) {
+      const { enabled, showSeconds, showDate } = config.clock;
+      if (!enabled) return;
+
+      const time = $('#clockTime');
+      time.textContent = (showSeconds ? TIME_FORMAT_SECONDS : TIME_FORMAT).format(now);
+      time.dateTime = now.toISOString();
+
+      const date = $('#clockDate');
+      date.textContent = DATE_FORMAT.format(now);
+      date.hidden = !showDate;
+    }
+
+    function renderGrid() {
+      const { gridColumns, gridRows } = config.appearance;
+      const cells = config.tiles.reduce((sum, tile) => sum + (tile.type === 'calendar' ? 4 : 1), 0);
+      const usedRows = Math.min(gridRows, Math.max(2, Math.ceil(cells / gridColumns)));
+
+      const grid = $('#tileGrid');
+      grid.style.setProperty('--cfg-cols', gridColumns);
+      grid.style.setProperty('--fit-rows', usedRows);
+
+      const tiles = config.tiles.map(buildTile).filter(Boolean);
+      if (!tiles.length) {
+        tiles.push(el('p', { class: 'grid-empty' }, 'Nog geen tegels. Voeg tegels toe via ⚙ Instellingen.'));
+      }
+      grid.replaceChildren(...tiles);
+    }
+
+    function buildTile(tile) {
+      const builder = TILE_BUILDERS[tile.type];
+      if (!builder) return null;
+      const node = builder(tile);
+      node.dataset.tileId = tile.id;
+      return node;
+    }
+
+    function buildLinkTile(tile) {
+      const href = resolveTarget(tile.target);
+      const style = tile.color ? { '--tile-color': tile.color } : null;
+      const content = [
+        tile.icon
+          ? el('span', { class: 'tile-icon', 'aria-hidden': 'true' }, tile.icon)
+          : el('span', { class: 'tile-icon tile-icon--letter', 'aria-hidden': 'true' }, initial(tile.title)),
+        el('span', { class: 'tile-title' }, tile.title)
+      ];
+
+      if (!href) {
+        return el('div', { class: 'tile tile--link is-invalid', style, title: 'Deze tegel heeft geen geldig doel' }, content);
+      }
+      return el('a', {
+        class: 'tile tile--link',
+        style,
+        href,
+        target: tile.newTab ? '_blank' : null,
+        rel: tile.newTab ? 'noopener noreferrer' : null
+      }, content);
+    }
+
+    function resolveTarget(target) {
+      if (target?.kind === 'url') return safeUrl(target.value, LINK_PROTOCOLS);
+      return null; // 'path' en 'session-file' volgen in fase 3
+    }
+
+    function buildLinksTile(tile) {
+      const items = tile.links.map(link => {
+        const href = safeUrl(link.url, LINK_PROTOCOLS);
+        return el('li', {}, href
+          ? el('a', { href }, link.label)
+          : el('span', { class: 'is-invalid', title: 'Ongeldig adres' }, link.label));
+      });
+
+      return el('section', { class: 'tile tile--links', 'aria-label': tile.title },
+        buildTileHeading(tile),
+        el('div', { class: 'tile-body' },
+          items.length ? el('ul', { class: 'tile-list' }, items) : buildTileState('Nog geen links.')));
+    }
+
+    function buildRssTile(tile) {
+      return el('section', { class: 'tile tile--rss', 'aria-label': tile.title },
+        buildTileHeading(tile),
+        el('div', { class: 'tile-body' }, buildTileState(dataTileMessage(tile))));
+    }
+
+    function buildCalendarTile(tile) {
+      return el('section', { class: 'tile tile--calendar', 'aria-label': tile.title },
+        buildTileHeading(tile),
+        el('div', { class: 'tile-body' }, buildTileState(dataTileMessage(tile))));
+    }
+
+    function dataTileMessage(tile) {
+      if (tile.type === 'calendar' && !tile.icsUrl) {
+        return 'Voeg het iCal-adres van je Google Agenda toe via ⚙ Instellingen → Tegels.';
+      }
+      if (!config.services.workerUrl) return 'Koppel eerst de Worker via ⚙ Instellingen → Koppelingen.';
+      return 'Laden…';
+    }
+
+    function buildTileHeading(tile) {
+      return el('h2', { class: 'tile-heading' },
+        tile.icon ? el('span', { 'aria-hidden': 'true' }, tile.icon) : null,
+        el('span', {}, tile.title));
+    }
+
+    function buildTileState(message) {
+      return el('p', { class: 'tile-state' }, message);
+    }
+
+    function renderQuickLinks() {
+      const bar = $('#quickLinksBar');
+      const links = config.quickLinks.items.flatMap(item => {
+        const href = safeUrl(item.url, LINK_PROTOCOLS);
+        return href ? [el('a', { class: 'quick-link', href }, item.label)] : [];
+      });
+      bar.replaceChildren(...links);
+      bar.hidden = !config.quickLinks.enabled || !links.length;
+    }
+
+    /* ======================================================================
+       Events
+       ====================================================================== */
+    function bindEvents() {
+      $('#themeToggle').addEventListener('click', toggleTheme);
+      $('#settingsBtn').addEventListener('click', () => openSettings());
+
+      darkQuery.addEventListener('change', () => {
+        if (config.appearance.theme === 'system') applyTheme();
+      });
+
+      // Timers lopen achter in een verborgen tabblad; bij terugkeer de klok direct gelijkzetten.
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) startClock();
+      });
+
+      const modal = $('#settingsModal');
+      modal.addEventListener('click', event => {
+        // Een klik precies op het <dialog>-element zelf is een klik op de backdrop.
+        if (event.target === modal || event.target.closest('[data-action="close-settings"]')) {
+          closeSettings();
+          return;
+        }
+        const navItem = event.target.closest('[data-section]');
+        if (navItem) renderSettingsSection(navItem.dataset.section);
+      });
+    }
+
+    function toggleTheme() {
+      config.appearance.theme = resolveTheme(config.appearance.theme) === 'dark' ? 'light' : 'dark';
+      storageSet(STORAGE_KEYS.theme, config.appearance.theme);
+      applyTheme();
+    }
+
+    function startClock() {
+      clearTimeout(timers.clock);
+      const tick = () => {
+        const now = new Date();
+        renderClock(now);
+        renderWelcome(now);
+        const interval = config.clock.showSeconds ? 1000 : 60_000;
+        timers.clock = setTimeout(tick, interval - (now.getTime() % interval) + 20);
+      };
+      tick();
+    }
+
+    /* ======================================================================
+       Instellingen
+       ====================================================================== */
+    function openSettings(sectionId = activeSettingsSection) {
+      renderSettingsNav();
+      renderSettingsSection(sectionId);
+      $('#settingsModal').showModal();
+    }
+
+    function closeSettings() {
+      $('#settingsModal').close();
+    }
+
+    function renderSettingsNav() {
+      $('#settingsNav').replaceChildren(...SETTINGS_SECTIONS.map(section =>
+        el('button', { class: 'settings-nav-item', type: 'button', 'data-section': section.id }, section.label)));
+    }
+
+    function renderSettingsSection(sectionId) {
+      const section = SETTINGS_SECTIONS.find(item => item.id === sectionId) ?? SETTINGS_SECTIONS[0];
+      activeSettingsSection = section.id;
+
+      for (const button of $('#settingsNav').children) {
+        if (button.dataset.section === section.id) button.setAttribute('aria-current', 'page');
+        else button.removeAttribute('aria-current');
+      }
+
+      $('#settingsPanel').replaceChildren(
+        el('h3', {}, section.label),
+        el('p', { class: 'muted' }, section.description),
+        el('p', { class: 'settings-placeholder' }, 'Deze instellingen worden in fase 4 toegevoegd.'));
+    }
+
+    /* ======================================================================
+       Hulpfuncties
+       ====================================================================== */
+    function $(selector, root = document) {
+      return root.querySelector(selector);
+    }
+
+    // Veilige DOM-builder: tekst gaat altijd als tekstnode de pagina in, nooit als HTML.
+    function el(tag, attributes = {}, ...children) {
+      const node = document.createElement(tag);
+      for (const [name, value] of Object.entries(attributes)) {
+        if (value == null || value === false) continue;
+        if (name === 'class') node.className = value;
+        else if (name === 'style') {
+          for (const [property, propertyValue] of Object.entries(value)) node.style.setProperty(property, propertyValue);
+        } else node.setAttribute(name, value === true ? '' : value);
+      }
+      node.append(...children.flat(Infinity).filter(child => child != null && child !== false));
+      return node;
+    }
+
+    function safeUrl(value, protocols) {
+      try {
+        const url = new URL(String(value).trim());
+        return protocols.includes(url.protocol) ? url.href : null;
+      } catch {
+        return null;
+      }
+    }
+
+    function initial(text) {
+      return ([...String(text).trim()][0] ?? '?').toUpperCase();
+    }
+
+    function dayPartGreeting(date) {
+      const hour = date.getHours();
+      if (hour < 6) return 'Goedenacht';
+      if (hour < 12) return 'Goedemorgen';
+      if (hour < 18) return 'Goedemiddag';
+      return 'Goedenavond';
+    }
+
+    /* ======================================================================
+       Init
+       ====================================================================== */
+    function init() {
+      config = loadData();
+      renderDashboard();
+      bindEvents();
+      startClock();
+    }
+
+    init();
+  </script>
+</body>
+</html>
