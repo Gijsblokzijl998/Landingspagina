@@ -280,9 +280,12 @@ Een `link`-tegel heeft een `target.kind`:
 
 | `kind` | Wat | Klikgedrag |
 |--------|-----|------------|
-| `url` | http(s)- of mailto-adres | gewone `<a href>`. Zelfde of nieuw tabblad is instelbaar per tegel. |
+| `url` | http(s)- of mailto-adres | gewone `<a href>`, altijd in een nieuw tabblad |
 | `path` | **onthouden pad**: `C:\Users\…\rapport.pdf`, een map, of `\\server\share\…` | `pathToFileUrl()` zet het pad om naar `file:///C:/Users/…` (spaties en tekens gecodeerd, UNC → `file://server/share/…`) en opent het als gewone link |
 | `session-file` | **bestand tijdens de sessie**: gekozen via de bestandskiezer | `URL.createObjectURL(file)` opent in een nieuw tabblad. Na herladen toont de tegel "Bestand opnieuw kiezen". |
+
+**Alle links openen in een nieuw tabblad** (tegels, link-tegels, snelle links), zodat het dashboard open blijft.
+Uitzondering: Office- en mailto-links starten een programma en zouden anders een leeg tabblad achterlaten.
 
 **Wat Edge doet met een lokaal pad** (controleren we in fase 3 op Windows):
 - **pdf, afbeeldingen, tekst en html** openen in Edge.
@@ -416,7 +419,7 @@ Elke fase levert een werkend `index.html` op en wordt apart gecommit. Grootte: S
 | **2** | Opslag | `loadData`/`saveData`, `initDB`, `mergeDefaults`, `migrateConfig`, `persist()`, export/import | wijzigingen overleven herladen; corrupte localStorage → herstel uit IndexedDB; export → import geeft identiek dashboard ✅ | M |
 | **3** | Tegels & navigatie | `link` (url / path / session-file), pad kopiëren, Office-URI-onderzoek, `links`-tegel, quick links-balk, grid-capaciteit | alle doeltypen werken in Edge zoals in §6; toetsenbordbediening werkt ✅ (Office-URI nog te testen op Windows) | M |
 | **4** | Instellingenmodal | zijbalk + alle categorieën uit §3.4, tegel-editor (toevoegen/bewerken/verwijderen/volgorde), validatie, opslaan/annuleren | alles uit `DEFAULT_CONFIG` is via de UI aan te passen zonder code te wijzigen ✅ (plaats zoeken volgt in fase 5) | L |
-| **5** | Weer | `fetchWeather`, `geocode` in de instellingen, `WMO_CODES`, cache | plaats zoeken → kiezen → weer in de header; offline toont de laatste waarde | S |
+| **5** | Weer | `fetchWeather`, `geocode` in de instellingen, `WMO_CODES`, cache | plaats zoeken → kiezen → weer in de header; offline toont de laatste waarde ✅ | S |
 | **6** | Cloudflare Worker | `worker/` met `/rss`, `/ics` en `/ping`, sleutel, allowlist, CORS, README; "Verbinding testen" in de instellingen | Worker gedeployed; testknop groen; verzoek zonder sleutel → 401 | S |
 | **7** | RSS-tegel | `fetchAndRenderRSS`, `parseFeed` (RSS 2.0 / Atom / RDF), verversen, foutstatus | drie verschillende echte feeds tonen correct; foute URL geeft nette melding | M |
 | **8** | Agenda-tegel (2x2) | `parseICS`, `expandEvents`, weergave per dag | jouw Google-agenda klopt 30 dagen vooruit, inclusief herhalingen, uitzonderingen, hele-dag-afspraken en zomer-/wintertijd | L |
@@ -458,7 +461,7 @@ Worker en kan eventueel naar voren.
 
 | # | Vraag | Voorlopige keuze |
 |---|-------|------------------|
-| V6 | Iconen voor tegels: emoji, eigen afbeelding, of automatisch het favicon van de site? (Een favicon-dienst stuurt de domeinnamen naar een derde partij.) | Emoji + optionele afbeelding-URL; favicon is opt-in |
+| V6 | Iconen voor tegels: emoji, eigen afbeelding, of automatisch het favicon van de site? | **Beslist:** gewone tegels een emoji; snelle links en links in een link-tegel krijgen een favicon (via Google), grijs tot je ze aanwijst. Uit te zetten bij Uiterlijk. |
 | V7 | Grid: volstaat de volgorde-met-pijltjes, of wil je drag & drop en vaste posities? | Pijltjes in v1, drag & drop later |
 | V8 | Moet het thema ook "systeem" (volgt Windows) kunnen volgen? | Ja: standaard "systeem", de knop wisselt licht ↔ donker |
 
@@ -471,5 +474,7 @@ Worker en kan eventueel naar voren.
    in Instellingen → Gegevens, synchronisatie tussen tabbladen).
 3. ~~**Fase 3**: tegels en navigatie~~ ✅ (paden, UNC, sessiebestanden, pad kopiëren, Office-URI als optie).
 4. ~~**Fase 4**: instellingenmodal~~ ✅ (alle categorieën, tegel-editor, live voorbeeld, validatie, opslaan/annuleren).
-5. **Fase 5**: weer (Open-Meteo en plaats zoeken).
-6. Na elke fase samen kijken en waar nodig het plan bijstellen. Dit document wordt bijgewerkt als keuzes veranderen.
+5. ~~**Fase 5**: weer~~ ✅ (Open-Meteo, plaats zoeken, cache van 30 minuten, verouderde waarde bij storing).
+   Daarnaast: alle links in een nieuw tabblad, titel en welkomsttekst op één regel, favicons bij links.
+6. **Fase 6**: Cloudflare Worker (RSS- en ICS-proxy) met deploy-instructies.
+7. Na elke fase samen kijken en waar nodig het plan bijstellen. Dit document wordt bijgewerkt als keuzes veranderen.

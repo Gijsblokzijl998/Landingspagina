@@ -7,7 +7,7 @@ Ontwerp, keuzes en fasering staan in [PROJECTPLAN.md](PROJECTPLAN.md).
 
 ## Status
 
-**Fase 1 t/m 4 zijn klaar.** Alles stel je in via ⚙ Instellingen:
+**Fase 1 t/m 5 zijn klaar.** Alles stel je in via ⚙ Instellingen:
 - **Tegels** toevoegen, bewerken, ordenen en verwijderen. Een gewone tegel opent:
   - een **website**;
   - een **lokaal bestand of map**: plak het pad, bijvoorbeeld via rechtsklik → *Als pad kopiëren* in Verkenner;
@@ -17,7 +17,13 @@ Ontwerp, keuzes en fasering staan in [PROJECTPLAN.md](PROJECTPLAN.md).
 - **Algemeen**: titel, welkomsttekst en logo (adres, pad of upload).
 - **Gegevens**: exporteren, importeren en terugzetten. Instellingen worden bewaard, met een automatische back-up.
 
-Het weer, RSS en de agenda volgen in de volgende fases.
+- **Weer & klok**: het weer in de kopbalk (Open-Meteo). Zoek je plaats op naam; klik op het weer om hem te
+  wijzigen.
+
+Alle links openen in een nieuw tabblad. Snelle links en links in een link-tegel tonen het favicon van de site,
+grijs tot je de link aanwijst. Die favicons komen van Google; uitzetten kan bij Uiterlijk.
+
+RSS en de agenda volgen in de volgende fases.
 
 **Office-bestanden:** een tegel naar een .docx, .xlsx of .pptx probeert het bestand direct in Word, Excel of
 PowerPoint te openen. Edge vraagt daarvoor eerst toestemming. Werkt dat niet, zet dan bij die tegel "Openen in

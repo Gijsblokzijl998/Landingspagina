@@ -117,7 +117,7 @@
       background: var(--bg) var(--page-bg-image) center / cover no-repeat fixed;
     }
     /* Op een foto blijven titel en klok leesbaar dankzij een halfdoorzichtige ondergrond. */
-    [data-background="image"] :is(.header-center, .clock) {
+    [data-background="image"] :is(.header-center, .clock, .weather) {
       padding: 6px 14px;
       border-radius: 12px;
       background: color-mix(in srgb, var(--surface) 82%, transparent);
@@ -184,7 +184,15 @@
       padding: 18px var(--page-pad) 14px;
     }
     .header-left { grid-area: left; display: flex; align-items: center; min-width: 0; }
-    .header-center { grid-area: center; text-align: center; min-width: 0; }
+    .header-center {
+      grid-area: center;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: center;
+      column-gap: 14px;
+      min-width: 0;
+    }
     .header-right {
       grid-area: right;
       justify-self: end;
@@ -201,7 +209,31 @@
       letter-spacing: -.01em;
       line-height: 1.2;
     }
-    .welcome { margin-top: 2px; color: var(--text-muted); }
+    .welcome {
+      padding-left: 14px;
+      border-left: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: clamp(.95rem, .85rem + .4vw, 1.15rem);
+    }
+
+    .weather {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 8px;
+      border: 0;
+      border-radius: 12px;
+      background: none;
+      line-height: 1.15;
+      text-align: right;
+      cursor: pointer;
+    }
+    .weather:hover { background: var(--surface-hover); }
+    .weather.is-stale { opacity: .55; }
+    .weather-icon { font-size: 1.7rem; line-height: 1; }
+    .weather-text { display: flex; flex-direction: column; align-items: flex-end; }
+    .weather-temp { font-size: 1.35rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .weather-place { max-width: 140px; overflow: hidden; color: var(--text-muted); font-size: .8rem; white-space: nowrap; text-overflow: ellipsis; }
 
     .clock {
       display: flex;
@@ -224,7 +256,11 @@
         grid-template-areas: "left right" "center center";
         row-gap: 12px;
       }
-      .header-center { text-align: left; }
+      .header-center { justify-content: flex-start; }
+    }
+
+    @media (max-width: 480px) {
+      .weather-place, .clock-date { display: none; }
     }
 
     /* ======================================================================
@@ -405,7 +441,9 @@
     .tile-list { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
     .tile-list a,
     .tile-list .is-invalid {
-      display: block;
+      display: flex;
+      align-items: center;
+      gap: 8px;
       padding: 6px 8px;
       overflow: hidden;
       border-radius: 8px;
@@ -415,6 +453,19 @@
       text-overflow: ellipsis;
     }
     .tile-list a:hover { background: var(--accent-soft); color: var(--accent-text); }
+    .link-label { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+    /* Favicons staan grijs; bij aanwijzen of focus krijgen ze hun kleur. */
+    .favicon {
+      flex: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 3px;
+      filter: grayscale(1);
+      opacity: .7;
+      transition: filter .2s, opacity .2s;
+    }
+    a:is(:hover, :focus-visible) > .favicon { filter: none; opacity: 1; }
     .tile-list .is-invalid { color: var(--text-muted); text-decoration: line-through; }
 
     .tile-state {
@@ -447,6 +498,9 @@
     .quick-link:last-child { margin-right: auto; }
     .quick-link {
       flex: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
       padding: 7px 14px;
       border: 1px solid var(--border);
       border-radius: 999px;
@@ -534,7 +588,7 @@
     .field-hint { max-width: 60ch; color: var(--text-muted); font-size: .8rem; }
     .static-value { font-weight: 500; }
 
-    .settings-panel :is(input[type="text"], input[type="url"], input[type="password"], input[type="number"], select) {
+    .settings-panel :is(input[type="text"], input[type="search"], input[type="url"], input[type="password"], input[type="number"], select) {
       width: 100%;
       min-width: 0;
       padding: 8px 10px;
@@ -586,6 +640,20 @@
       background: var(--bg);
       object-fit: contain;
     }
+
+    .place-search { display: grid; gap: 8px; }
+    .place-results { display: grid; gap: 4px; }
+    .place-option {
+      display: grid;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      text-align: left;
+      cursor: pointer;
+    }
+    .place-option:hover { border-color: var(--accent); }
+    .place-option span { font-size: .8rem; }
 
     .capacity { color: var(--text-muted); font-size: .9rem; }
     .capacity.is-over { color: var(--danger); font-weight: 600; }
@@ -698,7 +766,13 @@
     </div>
 
     <div class="header-right">
-      <div id="weatherWidget" class="weather" hidden></div>
+      <button id="weatherWidget" class="weather" type="button" hidden>
+        <span class="weather-icon" aria-hidden="true"></span>
+        <span class="weather-text">
+          <span class="weather-temp"></span>
+          <span class="weather-place"></span>
+        </span>
+      </button>
       <div id="clock" class="clock">
         <time id="clockTime" class="clock-time"></time>
         <span id="clockDate" class="clock-date"></span>
@@ -767,6 +841,43 @@
     const CONFIG_VERSION = 1;
     const EXPORT_APP_ID = 'landingspagina';
 
+    const WEATHER_API = 'https://api.open-meteo.com/v1/forecast';
+    const GEOCODING_API = 'https://geocoding-api.open-meteo.com/v1/search';
+    const FAVICON_SERVICE = 'https://www.google.com/s2/favicons';
+    const WEATHER_REFRESH_MS = 30 * 60_000;
+
+    // WMO-weercode (Open-Meteo) → [icoon overdag, icoon 's nachts, omschrijving]
+    const WMO_CODES = {
+      0: ['☀️', '🌙', 'Helder'],
+      1: ['🌤️', '🌙', 'Overwegend helder'],
+      2: ['⛅', '☁️', 'Half bewolkt'],
+      3: ['☁️', '☁️', 'Bewolkt'],
+      45: ['🌫️', '🌫️', 'Mist'],
+      48: ['🌫️', '🌫️', 'Mist met rijp'],
+      51: ['🌦️', '🌧️', 'Lichte motregen'],
+      53: ['🌦️', '🌧️', 'Motregen'],
+      55: ['🌧️', '🌧️', 'Dichte motregen'],
+      56: ['🌧️', '🌧️', 'Lichte ijzel'],
+      57: ['🌧️', '🌧️', 'IJzel'],
+      61: ['🌦️', '🌧️', 'Lichte regen'],
+      63: ['🌧️', '🌧️', 'Regen'],
+      65: ['🌧️', '🌧️', 'Zware regen'],
+      66: ['🌧️', '🌧️', 'Lichte ijzelregen'],
+      67: ['🌧️', '🌧️', 'IJzelregen'],
+      71: ['🌨️', '🌨️', 'Lichte sneeuw'],
+      73: ['🌨️', '🌨️', 'Sneeuw'],
+      75: ['❄️', '❄️', 'Zware sneeuw'],
+      77: ['🌨️', '🌨️', 'Korrelsneeuw'],
+      80: ['🌦️', '🌧️', 'Lichte buien'],
+      81: ['🌧️', '🌧️', 'Buien'],
+      82: ['⛈️', '⛈️', 'Zware buien'],
+      85: ['🌨️', '🌨️', 'Sneeuwbuien'],
+      86: ['🌨️', '🌨️', 'Zware sneeuwbuien'],
+      95: ['⛈️', '⛈️', 'Onweer'],
+      96: ['⛈️', '⛈️', 'Onweer met hagel'],
+      99: ['⛈️', '⛈️', 'Zwaar onweer met hagel']
+    };
+
     const THEMES = ['light', 'dark', 'system'];
     const TILE_STYLES = ['rounded', 'square'];
     const LINK_PROTOCOLS = ['http:', 'https:', 'mailto:'];
@@ -786,6 +897,7 @@
         gridColumns: 4,                            // 2–4
         gridRows: 4,                               // 2–4
         tileStyle: 'rounded',                      // 'rounded' | 'square'
+        favicons: true,                            // favicons bij links, via Google
         background: { type: 'none', color: '#dfe7f2', image: '' }   // type: 'none' | 'color' | 'image'
       },
       clock: { enabled: true, showSeconds: false, showDate: true },
@@ -797,9 +909,9 @@
       services: { workerUrl: '', workerKey: '' },
       tiles: [
         { id: 't1', type: 'calendar', title: 'Agenda', icon: '📅', icsUrl: '', daysAhead: 30 },
-        { id: 't2', type: 'link', title: 'Outlook', icon: '✉️', color: '', newTab: false,
+        { id: 't2', type: 'link', title: 'Outlook', icon: '✉️', color: '',
           target: { kind: 'url', value: 'https://outlook.office.com/mail/' } },   // kind: 'url' | 'path' | 'session-file'
-        { id: 't3', type: 'link', title: 'Google Agenda', icon: '🗓️', color: '', newTab: false,
+        { id: 't3', type: 'link', title: 'Google Agenda', icon: '🗓️', color: '',
           target: { kind: 'url', value: 'https://calendar.google.com/' } },
         { id: 't4', type: 'links', title: 'Microsoft 365', icon: '💼', links: [
           { label: 'Teams', url: 'https://teams.microsoft.com/' },
@@ -821,7 +933,7 @@
 
     // Standaardvelden per tegeltype; ontbrekende velden in opgeslagen of geïmporteerde tegels worden hiermee aangevuld.
     const TILE_DEFAULTS = {
-      link: { title: '', icon: '', color: '', newTab: false, openInApp: true, target: { kind: 'url', value: '' } },
+      link: { title: '', icon: '', color: '', openInApp: true, target: { kind: 'url', value: '' } },
       links: { title: '', icon: '', links: [] },
       rss: { title: '', icon: '', feedUrl: '', maxItems: 8 },
       calendar: { title: '', icon: '', icsUrl: '', daysAhead: 30 }
@@ -889,6 +1001,9 @@
     let editingTileId = null;
     let pendingSessionTileId = null;
     const sessionFiles = new Map();   // tegel-id → { file, url }, alleen voor deze sessie
+    let weather = null;               // { key, fetchedAt, data, failed }
+    let weatherRun = 0;               // voorkomt dat een oude weer-update een nieuwere overschrijft
+    let placeSearchRun = 0;
     let activeSettingsSection = SETTINGS_SECTIONS[0].id;
     const timers = {};
     const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -968,6 +1083,7 @@
       saveData();
       renderDashboard();
       startClock();
+      updateWeather();
     }
 
     function initDB() {
@@ -1116,6 +1232,7 @@
     function renderDashboard() {
       applyAppearance();
       renderHeader();
+      renderWeather();
       renderGrid();
       renderQuickLinks();
     }
@@ -1233,16 +1350,8 @@
       }
 
       const isPath = tile.target.kind === 'path';
-      // Een Office-link start een programma; een nieuw tabblad zou dan leeg blijven.
-      const newTab = tile.newTab && !href.startsWith('ms-');
       return el('div', { class: 'tile tile--link', style },
-        el('a', {
-          class: 'tile-main',
-          href,
-          title: isPath ? cleanPath(tile.target.value) : null,
-          target: newTab ? '_blank' : null,
-          rel: newTab ? 'noopener noreferrer' : null
-        }, face),
+        el('a', { class: 'tile-main', ...linkAttributes(href), title: isPath ? cleanPath(tile.target.value) : null }, face),
         isPath
           ? el('button', {
               class: 'tile-action',
@@ -1272,7 +1381,7 @@
             face, el('span', { class: 'tile-hint' }, 'Bestand kiezen…')));
       }
       return el('div', { class: 'tile tile--link', style },
-        el('a', { class: 'tile-main', href: chosen.url, target: '_blank', rel: 'noopener', title: chosen.file.name },
+        el('a', { class: 'tile-main', ...linkAttributes(chosen.url), title: chosen.file.name },
           face, el('span', { class: 'tile-hint' }, chosen.file.name)),
         el('button', {
           class: 'tile-action',
@@ -1288,7 +1397,7 @@
         const href = safeUrl(link.url, LINK_PROTOCOLS);
         const label = link.label || link.url;
         return el('li', {}, href
-          ? el('a', { href }, label)
+          ? el('a', linkAttributes(href), buildFavicon(href), el('span', { class: 'link-label' }, label))
           : el('span', { class: 'is-invalid', title: 'Ongeldig adres' }, label));
       });
 
@@ -1329,11 +1438,36 @@
       return el('p', { class: 'tile-state' }, message);
     }
 
+    // Links openen altijd in een nieuw tabblad. Office- en mailto-links starten een programma en krijgen geen (leeg) tabblad.
+    function linkAttributes(href) {
+      return /^(https?|file|blob):/i.test(href) ? { href, target: '_blank', rel: 'noopener noreferrer' } : { href };
+    }
+
+    // Favicon via Google; grijs tot je de link aanwijst. Mislukt het laden, dan verdwijnt het icoontje.
+    function buildFavicon(href) {
+      if (!config.appearance.favicons) return null;
+      const { protocol, hostname } = new URL(href);
+      if (protocol !== 'http:' && protocol !== 'https:') return null;
+      const image = el('img', {
+        class: 'favicon',
+        src: `${FAVICON_SERVICE}?domain=${encodeURIComponent(hostname)}&sz=32`,
+        alt: '',
+        width: 16,
+        height: 16,
+        loading: 'lazy',
+        referrerpolicy: 'no-referrer'
+      });
+      image.addEventListener('error', () => image.remove(), { once: true });
+      return image;
+    }
+
     function renderQuickLinks() {
       const bar = $('#quickLinksBar');
       const links = config.quickLinks.items.flatMap(item => {
         const href = safeUrl(item.url, LINK_PROTOCOLS);
-        return href ? [el('a', { class: 'quick-link', href }, item.label || item.url)] : [];
+        return href
+          ? [el('a', { class: 'quick-link', ...linkAttributes(href) }, buildFavicon(href), item.label || item.url)]
+          : [];
       });
       bar.replaceChildren(...links);
       bar.hidden = !config.quickLinks.enabled || !links.length;
@@ -1346,6 +1480,7 @@
       $('#themeToggle').addEventListener('click', toggleTheme);
       $('#settingsBtn').addEventListener('click', () => openSettings());
       $('#tileGrid').addEventListener('click', handleTileClick);
+      $('#weatherWidget').addEventListener('click', () => openSettings('weather'));
 
       $('#sessionFileInput').addEventListener('change', event => {
         const [file] = event.target.files;
@@ -1359,7 +1494,9 @@
 
       // Timers lopen achter in een verborgen tabblad; bij terugkeer de klok direct gelijkzetten.
       document.addEventListener('visibilitychange', () => {
-        if (!document.hidden) startClock();
+        if (document.hidden) return;
+        startClock();
+        updateWeather();
       });
 
       // Wijzigingen uit een ander tabblad met het dashboard overnemen, zodat een oud tabblad ze niet overschrijft.
@@ -1371,6 +1508,7 @@
           config = data;
           renderDashboard();
           startClock();
+          updateWeather();
         } catch {
           // Onleesbare waarde: negeren, de eigen config blijft gelden.
         }
@@ -1458,6 +1596,135 @@
     }
 
     /* ======================================================================
+       Databronnen
+       ====================================================================== */
+    function weatherKey(settings = config.weather) {
+      const { latitude, longitude } = settings.location;
+      return `${latitude},${longitude},${settings.unit}`;
+    }
+
+    // Toont het weer uit de cache en haalt het opnieuw op als het ouder is dan 30 minuten.
+    async function updateWeather({ force = false } = {}) {
+      const run = ++weatherRun;
+      clearTimeout(timers.weather);
+      if (!config.weather.enabled) {
+        renderWeather();
+        return;
+      }
+
+      const key = weatherKey();
+      if (weather?.key !== key) {
+        const cached = await idbGet('cache', 'weather').catch(() => null);
+        if (run !== weatherRun) return;
+        weather = cached?.key === key ? cached : null;
+        renderWeather();
+      }
+
+      const age = () => (weather ? Date.now() - weather.fetchedAt : Infinity);
+      if (force || weather?.failed || age() >= WEATHER_REFRESH_MS) {
+        const result = await fetchWeather(key);
+        if (run !== weatherRun) return;
+        if (result) {
+          weather = result;
+          idbPut('cache', 'weather', result).catch(() => {});
+        } else if (weather) {
+          weather.failed = true; // laatste waarde blijft staan, gemarkeerd als verouderd
+        }
+        renderWeather();
+      }
+      // Na een mislukte poging over een minuut opnieuw, anders als de data 30 minuten oud is.
+      timers.weather = setTimeout(updateWeather, weather?.failed ? 60_000 : Math.max(60_000, WEATHER_REFRESH_MS - age()));
+    }
+
+    async function fetchWeather(key) {
+      const { location, unit } = config.weather;
+      const params = new URLSearchParams({
+        latitude: location.latitude,
+        longitude: location.longitude,
+        current: 'temperature_2m,apparent_temperature,weather_code,wind_speed_10m,is_day',
+        daily: 'temperature_2m_max,temperature_2m_min',
+        timezone: 'auto',
+        forecast_days: 1
+      });
+      if (unit === 'fahrenheit') params.set('temperature_unit', 'fahrenheit');
+      try {
+        const response = await fetch(`${WEATHER_API}?${params}`, { signal: AbortSignal.timeout(10_000) });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        if (typeof data?.current?.temperature_2m !== 'number') throw new Error('Onverwacht antwoord');
+        return { key, fetchedAt: Date.now(), data, failed: false };
+      } catch {
+        return null;
+      }
+    }
+
+    function renderWeather() {
+      const widget = $('#weatherWidget');
+      const current = config.weather.enabled && weather?.key === weatherKey() ? weather.data.current : null;
+      widget.hidden = !current;
+      if (!current) return;
+
+      const [dayIcon, nightIcon, description] = WMO_CODES[current.weather_code] ?? ['🌡️', '🌡️', 'Onbekend weer'];
+      const { name } = config.weather.location;
+      const { temperature_2m_min: min, temperature_2m_max: max } = weather.data.daily ?? {};
+      const stale = weather.failed || Date.now() - weather.fetchedAt > 2 * WEATHER_REFRESH_MS;
+      const temperature = `${Math.round(current.temperature_2m)}°`;
+
+      $('.weather-icon', widget).textContent = current.is_day ? dayIcon : nightIcon;
+      $('.weather-temp', widget).textContent = temperature;
+      $('.weather-place', widget).textContent = name;
+      widget.classList.toggle('is-stale', stale);
+      widget.title = [
+        `${description} in ${name}`,
+        `Gevoelstemperatuur ${Math.round(current.apparent_temperature)}°`,
+        min?.length && max?.length ? `Vandaag ${Math.round(min[0])}° tot ${Math.round(max[0])}°` : null,
+        `Wind ${Math.round(current.wind_speed_10m)} km/u`,
+        `Bijgewerkt om ${TIME_FORMAT.format(new Date(weather.fetchedAt))}${stale ? ' (verouderd)' : ''}`
+      ].filter(Boolean).join('\n');
+      widget.setAttribute('aria-label', `Weer in ${name}: ${temperature}, ${description.toLowerCase()}. Plaats wijzigen`);
+    }
+
+    async function geocode(query) {
+      const params = new URLSearchParams({ name: query.trim(), count: 8, language: 'nl', format: 'json' });
+      const response = await fetch(`${GEOCODING_API}?${params}`, { signal: AbortSignal.timeout(10_000) });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const { results = [] } = await response.json();
+      // Alleen woonplaatsen en gebieden (geen vliegvelden, bergen enz.), tenzij er verder niets is.
+      const places = results.filter(place => /^(PPL|ADM)/.test(place.feature_code ?? ''));
+      return (places.length ? places : results).slice(0, 6);
+    }
+
+    const searchPlaces = debounce(async query => {
+      const run = ++placeSearchRun;
+      const results = $('#placeResults');
+      if (!results) return;
+      if (query.trim().length < 2) {
+        results.replaceChildren();
+        return;
+      }
+      results.replaceChildren(el('p', { class: 'field-hint' }, 'Zoeken…'));
+      let content;
+      try {
+        const places = await geocode(query);
+        content = places.length
+          ? places.map(place => el('button', {
+              class: 'place-option',
+              type: 'button',
+              'data-action': 'choose-place',
+              'data-name': place.name,
+              'data-latitude': place.latitude,
+              'data-longitude': place.longitude
+            },
+              el('strong', {}, place.name),
+              el('span', { class: 'muted' }, [place.admin1, place.country].filter(Boolean).join(', '))))
+          : [el('p', { class: 'field-hint' }, 'Geen plaatsen gevonden.')];
+      } catch {
+        content = [el('p', { class: 'field-hint' }, 'Zoeken lukt nu niet. Controleer je internetverbinding.')];
+      }
+      if (run === placeSearchRun && results.isConnected) results.replaceChildren(...content);
+    }, 300);
+
+    /* ======================================================================
        Instellingen
        Het formulier werkt op `draft`, een kopie van de config. Pas bij Opslaan
        wordt die gecontroleerd, opgeschoond en bewaard.
@@ -1490,6 +1757,14 @@
       'set-accent': button => {
         draft.appearance.accentColor = button.dataset.color;
         applyAppearance(draft.appearance);
+        rerenderSettings();
+      },
+      'choose-place': button => {
+        draft.weather.location = {
+          name: button.dataset.name,
+          latitude: Number(button.dataset.latitude),
+          longitude: Number(button.dataset.longitude)
+        };
         rerenderSettings();
       },
       'clear-image': button => {
@@ -1616,6 +1891,7 @@
 
     function handleSettingsInput(event) {
       const control = event.target;
+      if (control.id === 'placeSearch') searchPlaces(control.value);
       const path = control.dataset.path;
       if (!path || !draft) return;
       setPath(draft, path, readControl(control));
@@ -1821,7 +2097,11 @@
           el('div', { class: 'inline' },
             field('Kolommen', selectFor('appearance.gridColumns', gridOptions, { 'data-type': 'number', 'data-rerender': true })),
             field('Rijen', selectFor('appearance.gridRows', gridOptions, { 'data-type': 'number', 'data-rerender': true }))),
-          field('Tegelstijl', selectFor('appearance.tileStyle', [['rounded', 'Afgerond'], ['square', 'Vierkant']])))
+          field('Tegelstijl', selectFor('appearance.tileStyle', [['rounded', 'Afgerond'], ['square', 'Vierkant']]))),
+        buildSettingsGroup('Favicons',
+          'Kleine logo\'s bij snelle links en links in een link-tegel. Ze komen van Google; daardoor ziet Google ' +
+          'welke websites in je links staan.',
+          checkbox('appearance.favicons', 'Favicons tonen'))
       ];
     }
 
@@ -1888,7 +2168,7 @@
             ? el('p', { class: 'field-hint' },
                 'Je kiest het bestand bij de eerste klik op de tegel. Na herladen van de pagina kies je het opnieuw: ' +
                 'browsers mogen een gekozen bestand niet onthouden. Gebruik "Lokaal bestand of map" om een vast pad te bewaren.')
-            : checkbox(`${base}.newTab`, 'Openen in een nieuw tabblad'),
+            : null,
           colorField(tile, base)
         ];
       },
@@ -1947,8 +2227,18 @@
       return [
         buildSettingsGroup('Weer', null,
           checkbox('weather.enabled', 'Weer tonen in de kopbalk'),
-          field('Plaats', el('p', { class: 'static-value' }, draft.weather.location.name),
-            'Een andere plaats zoeken kan vanaf fase 5, als het weer wordt toegevoegd.'),
+          field('Plaats', el('div', { class: 'place-search' },
+            el('p', { class: 'static-value' }, `Gekozen: ${draft.weather.location.name}`),
+            el('input', {
+              id: 'placeSearch',
+              type: 'search',
+              placeholder: 'Zoek een plaats, bijvoorbeeld Utrecht',
+              autocomplete: 'off',
+              'aria-label': 'Plaats zoeken',
+              'aria-controls': 'placeResults'
+            }),
+            el('div', { id: 'placeResults', class: 'place-results', 'aria-live': 'polite' })),
+            'Het weer komt van Open-Meteo en wordt elke 30 minuten bijgewerkt.'),
           field('Eenheid', selectFor('weather.unit', [['celsius', 'Celsius (°C)'], ['fahrenheit', 'Fahrenheit (°F)']]))),
         buildSettingsGroup('Klok', null,
           checkbox('clock.enabled', 'Klok tonen'),
@@ -2121,6 +2411,14 @@
       return /^#[0-9a-f]{6}$/i.test(value);
     }
 
+    function debounce(callback, delay) {
+      let timer;
+      return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => callback(...args), delay);
+      };
+    }
+
     function isPlainObject(value) {
       return typeof value === 'object' && value !== null && !Array.isArray(value);
     }
@@ -2176,6 +2474,7 @@
       bindEvents();
       startClock();
       await syncBackup(status);
+      updateWeather();
       requestPersistentStorage();
     }
 
