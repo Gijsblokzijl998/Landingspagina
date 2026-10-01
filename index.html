@@ -30,6 +30,7 @@
       --accent: #2563eb;
       --accent-text: color-mix(in srgb, var(--accent) 85%, black);
       --accent-soft: color-mix(in srgb, var(--accent) 12%, transparent);
+      --danger: #c62828;
       --shadow: 0 1px 2px rgb(16 24 40 / .05), 0 2px 8px rgb(16 24 40 / .06);
       --shadow-hover: 0 4px 10px rgb(16 24 40 / .08), 0 14px 28px rgb(16 24 40 / .10);
       --backdrop: rgb(15 18 25 / .45);
@@ -52,6 +53,7 @@
       --text-muted: #9aa3b2;
       --accent-text: color-mix(in srgb, var(--accent) 55%, white);
       --accent-soft: color-mix(in srgb, var(--accent) 22%, transparent);
+      --danger: #f87171;
       --shadow: 0 1px 2px rgb(0 0 0 / .35), 0 2px 8px rgb(0 0 0 / .25);
       --shadow-hover: 0 6px 14px rgb(0 0 0 / .4), 0 16px 32px rgb(0 0 0 / .35);
       --backdrop: rgb(0 0 0 / .6);
@@ -80,7 +82,7 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    h1, h2, h3, p { margin: 0; }
+    h1, h2, h3, h4, p { margin: 0; }
     a { color: inherit; }
     button { font: inherit; color: inherit; }
     :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
@@ -120,8 +122,30 @@
       cursor: pointer;
     }
     .btn:hover { background: var(--surface-hover); }
+    .btn--primary { border-color: var(--accent); background: var(--accent); color: #fff; }
+    .btn--primary:hover { background: color-mix(in srgb, var(--accent) 88%, black); }
+    .btn--danger { border-color: color-mix(in srgb, var(--danger) 45%, var(--border)); color: var(--danger); }
+    .btn--danger:hover { background: color-mix(in srgb, var(--danger) 10%, var(--surface)); }
 
     .muted { color: var(--text-muted); }
+
+    .toast {
+      inset: auto auto 24px 50%;
+      max-width: min(480px, 100vw - 32px);
+      margin: 0;
+      padding: 10px 16px;
+      border: 0;
+      border-radius: 10px;
+      background: var(--text);
+      color: var(--bg);
+      box-shadow: var(--shadow-hover);
+      font-size: .9rem;
+      transform: translateX(-50%);
+    }
+    .toast:popover-open { animation: toast-in .2s ease-out; }
+    @keyframes toast-in {
+      from { opacity: 0; transform: translate(-50%, 8px); }
+    }
 
     /* ======================================================================
        Header
@@ -418,6 +442,27 @@
 
     .settings-panel { display: grid; align-content: start; gap: 8px; padding: 20px 24px; overflow: auto; }
     .settings-panel h3 { font-size: 1.05rem; font-weight: 650; }
+    .settings-group {
+      display: grid;
+      gap: 6px;
+      margin-top: 12px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+    .settings-group h4 { font-size: .95rem; font-weight: 600; }
+    .settings-group p { max-width: 60ch; color: var(--text-muted); font-size: .9rem; }
+    .settings-group-content { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+
+    .facts {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 4px 20px;
+      margin: 0;
+      font-size: .9rem;
+    }
+    .facts dt { color: var(--text-muted); }
+    .facts dd { margin: 0; }
+
     .settings-placeholder {
       margin-top: 12px;
       padding: 12px 14px;
@@ -505,7 +550,10 @@
         <button class="btn" type="button" data-action="close-settings">Sluiten</button>
       </div>
     </div>
+    <input id="importFile" type="file" accept=".json,application/json" hidden>
   </dialog>
+
+  <div id="toast" class="toast" popover="manual" role="status"></div>
 
   <script>
     'use strict';
@@ -514,15 +562,24 @@
        Constanten
        ====================================================================== */
     const STORAGE_KEYS = {
+      config: 'lp:config',
       theme: 'lp:theme' // ook gelezen door het script in <head>
     };
 
+    const DB_NAME = 'landingspagina';
+    const DB_VERSION = 1;
+    const DB_STORES = ['kv', 'assets', 'cache'];   // kv: config-back-up, assets: afbeeldingen, cache: externe data
+
+    const CONFIG_VERSION = 1;
+    const EXPORT_APP_ID = 'landingspagina';
+
     const THEMES = ['light', 'dark', 'system'];
+    const TILE_STYLES = ['rounded', 'square'];
     const LINK_PROTOCOLS = ['http:', 'https:', 'mailto:'];
     const IMAGE_PROTOCOLS = ['http:', 'https:', 'file:', 'data:'];
 
     const DEFAULT_CONFIG = {
-      version: 1,
+      version: CONFIG_VERSION,
       general: {
         title: 'Mijn Dashboard',
         showWelcome: true,
@@ -568,6 +625,18 @@
       }
     };
 
+    // Standaardvelden per tegeltype; ontbrekende velden in opgeslagen of geïmporteerde tegels worden hiermee aangevuld.
+    const TILE_DEFAULTS = {
+      link: { title: '', icon: '', color: '', newTab: false, target: { kind: 'url', value: '' } },
+      links: { title: '', icon: '', links: [] },
+      rss: { title: '', icon: '', feedUrl: '', maxItems: 8 },
+      calendar: { title: '', icon: '', icsUrl: '', daysAhead: 30 }
+    };
+    const LINK_DEFAULTS = { label: '', url: '' };
+
+    // MIGRATIONS[n] zet een config van versie n om naar versie n + 1 (verhoog daarbij CONFIG_VERSION).
+    const MIGRATIONS = {};
+
     const SETTINGS_SECTIONS = [
       { id: 'general', label: 'Algemeen', description: 'Titel, welkomsttekst en logo.' },
       { id: 'appearance', label: 'Uiterlijk', description: 'Thema, accentkleur, achtergrond, grootte van het grid en tegelstijl.' },
@@ -586,6 +655,7 @@
        State
        ====================================================================== */
     let config;
+    let dbPromise = null;
     let activeSettingsSection = SETTINGS_SECTIONS[0].id;
     const timers = {};
     const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -609,11 +679,191 @@
       }
     }
 
+    // Synchroon laden uit localStorage (fast boot). status: 'stored' | 'empty' | 'corrupt'.
     function loadData() {
+      const raw = storageGet(STORAGE_KEYS.config);
+      if (raw) {
+        try {
+          const data = normalizeConfig(JSON.parse(raw));
+          if (data) return { data, status: 'stored' };
+        } catch {
+          // Geen geldige JSON: hieronder als beschadigd behandelen.
+        }
+      }
+
       const data = structuredClone(DEFAULT_CONFIG);
-      const theme = storageGet(STORAGE_KEYS.theme);
+      const theme = storageGet(STORAGE_KEYS.theme); // fase 1 bewaarde alleen het thema
       if (THEMES.includes(theme)) data.appearance.theme = theme;
+      return { data, status: raw ? 'corrupt' : 'empty' };
+    }
+
+    function saveData() {
+      try {
+        localStorage.setItem(STORAGE_KEYS.config, JSON.stringify(config));
+      } catch (error) {
+        toast(error?.name === 'QuotaExceededError'
+          ? 'De opslag is vol: je instellingen zijn niet bewaard.'
+          : 'Je instellingen konden niet worden bewaard.');
+      }
+      storageSet(STORAGE_KEYS.theme, config.appearance.theme);
+      idbPut('kv', 'config', config).catch(() => {
+        // Geen IndexedDB: localStorage werkt nog, alleen zonder back-up.
+      });
+    }
+
+    // Na het openen van IndexedDB: back-up bijwerken, of de config herstellen als localStorage leeg of kapot was.
+    async function syncBackup(status) {
+      try {
+        if (status === 'stored') {
+          await idbPut('kv', 'config', config);
+          return;
+        }
+        const backup = normalizeConfig(await idbGet('kv', 'config'));
+        if (backup) {
+          applyConfig(backup);
+          toast('Je instellingen zijn hersteld uit de back-up.');
+          return;
+        }
+      } catch {
+        // IndexedDB niet beschikbaar.
+      }
+      if (status === 'corrupt') toast('De opgeslagen instellingen waren beschadigd; de standaardinstellingen zijn geladen.');
+    }
+
+    function applyConfig(data) {
+      config = data;
+      saveData();
+      renderDashboard();
+      startClock();
+    }
+
+    function initDB() {
+      dbPromise ??= new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        request.onupgradeneeded = () => {
+          for (const store of DB_STORES) {
+            if (!request.result.objectStoreNames.contains(store)) request.result.createObjectStore(store);
+          }
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      return dbPromise;
+    }
+
+    async function idbRequest(storeName, mode, action) {
+      const db = await initDB();
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(storeName, mode);
+        const request = action(transaction.objectStore(storeName));
+        transaction.oncomplete = () => resolve(request.result);
+        transaction.onerror = transaction.onabort = () => reject(transaction.error);
+      });
+    }
+
+    function idbGet(storeName, key) {
+      return idbRequest(storeName, 'readonly', store => store.get(key));
+    }
+
+    function idbPut(storeName, key, value) {
+      return idbRequest(storeName, 'readwrite', store => store.put(value, key));
+    }
+
+    // Vraagt de browser de opslag niet automatisch op te ruimen; Edge beslist zelf of dat wordt toegestaan.
+    async function requestPersistentStorage() {
+      try {
+        if (navigator.storage?.persist && !(await navigator.storage.persisted())) await navigator.storage.persist();
+      } catch {
+        // Niet ondersteund: geen probleem, alleen minder bescherming.
+      }
+    }
+
+    // Maakt van willekeurige (opgeslagen of geïmporteerde) data een volledige, geldige config, of null.
+    function normalizeConfig(raw) {
+      if (!isPlainObject(raw)) return null;
+      const data = mergeDefaults(DEFAULT_CONFIG, migrateConfig(structuredClone(raw)));
+
+      const ids = new Set();
+      const uniqueId = id => {
+        const value = typeof id === 'string' && id && !ids.has(id) ? id : uid();
+        ids.add(value);
+        return value;
+      };
+      data.tiles = data.tiles.map(tile => normalizeTile(tile, uniqueId)).filter(Boolean);
+      data.quickLinks.items = data.quickLinks.items
+        .filter(isPlainObject)
+        .map(item => ({ id: uniqueId(item.id), ...mergeDefaults(LINK_DEFAULTS, item) }));
+
+      const { appearance } = data;
+      appearance.gridColumns = clamp(Math.round(appearance.gridColumns), 2, 4);
+      appearance.gridRows = clamp(Math.round(appearance.gridRows), 2, 4);
+      if (!THEMES.includes(appearance.theme)) appearance.theme = DEFAULT_CONFIG.appearance.theme;
+      if (!TILE_STYLES.includes(appearance.tileStyle)) appearance.tileStyle = DEFAULT_CONFIG.appearance.tileStyle;
+      if (!/^#[0-9a-f]{6}$/i.test(appearance.accentColor)) appearance.accentColor = DEFAULT_CONFIG.appearance.accentColor;
       return data;
+    }
+
+    function normalizeTile(tile, uniqueId) {
+      const defaults = isPlainObject(tile) ? TILE_DEFAULTS[tile.type] : null;
+      if (!defaults) return null;
+      const normalized = { id: uniqueId(tile.id), type: tile.type, ...mergeDefaults(defaults, tile) };
+      if (normalized.type === 'links') {
+        normalized.links = normalized.links.filter(isPlainObject).map(link => mergeDefaults(LINK_DEFAULTS, link));
+      }
+      return normalized;
+    }
+
+    // Neemt de structuur van `defaults` over; waarden uit `value` blijven alleen staan als hun type klopt.
+    function mergeDefaults(defaults, value) {
+      if (Array.isArray(defaults)) return Array.isArray(value) ? value : structuredClone(defaults);
+      if (isPlainObject(defaults)) {
+        const source = isPlainObject(value) ? value : {};
+        return Object.fromEntries(Object.entries(defaults).map(([key, fallback]) => [key, mergeDefaults(fallback, source[key])]));
+      }
+      return typeof value === typeof defaults ? value : defaults;
+    }
+
+    function migrateConfig(data) {
+      let version = Number.isInteger(data.version) ? data.version : 1;
+      while (version < CONFIG_VERSION) {
+        data = MIGRATIONS[version](data);
+        version += 1;
+      }
+      data.version = CONFIG_VERSION;
+      return data;
+    }
+
+    function exportConfig() {
+      const payload = { app: EXPORT_APP_ID, exportedAt: new Date().toISOString(), config };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      el('a', { href: url, download: `dashboard-instellingen-${dateStamp(new Date())}.json` }).click();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    }
+
+    async function importConfig(file) {
+      let data = null;
+      try {
+        const parsed = JSON.parse(await file.text());
+        if (parsed?.app === EXPORT_APP_ID) data = normalizeConfig(parsed.config);
+      } catch {
+        // Geen JSON: hieronder gemeld.
+      }
+      if (!data) {
+        toast(`"${file.name}" is geen exportbestand van dit dashboard.`);
+        return;
+      }
+      if (!confirm(`Je huidige instellingen vervangen door die uit "${file.name}"?`)) return;
+      applyConfig(data);
+      closeSettings();
+      toast('De instellingen zijn geïmporteerd.');
+    }
+
+    function resetConfig() {
+      if (!confirm('Alle instellingen terugzetten naar de standaard? Dit kan niet ongedaan worden gemaakt.')) return;
+      applyConfig(structuredClone(DEFAULT_CONFIG));
+      closeSettings();
+      toast('De standaardinstellingen zijn teruggezet.');
     }
 
     /* ======================================================================
@@ -811,21 +1061,52 @@
         if (!document.hidden) startClock();
       });
 
+      // Wijzigingen uit een ander tabblad met het dashboard overnemen, zodat een oud tabblad ze niet overschrijft.
+      window.addEventListener('storage', event => {
+        if (event.key !== STORAGE_KEYS.config || !event.newValue) return;
+        try {
+          const data = normalizeConfig(JSON.parse(event.newValue));
+          if (!data) return;
+          config = data;
+          renderDashboard();
+          startClock();
+        } catch {
+          // Onleesbare waarde: negeren, de eigen config blijft gelden.
+        }
+      });
+
       const modal = $('#settingsModal');
+      const settingsActions = {
+        'close-settings': closeSettings,
+        'export-config': exportConfig,
+        'import-config': () => $('#importFile').click(),
+        'reset-config': resetConfig
+      };
       modal.addEventListener('click', event => {
         // Een klik precies op het <dialog>-element zelf is een klik op de backdrop.
-        if (event.target === modal || event.target.closest('[data-action="close-settings"]')) {
+        if (event.target === modal) {
           closeSettings();
+          return;
+        }
+        const action = event.target.closest('[data-action]')?.dataset.action;
+        if (settingsActions[action]) {
+          settingsActions[action]();
           return;
         }
         const navItem = event.target.closest('[data-section]');
         if (navItem) renderSettingsSection(navItem.dataset.section);
       });
+
+      $('#importFile').addEventListener('change', event => {
+        const [file] = event.target.files;
+        event.target.value = ''; // hetzelfde bestand later opnieuw kunnen kiezen
+        if (file) importConfig(file);
+      });
     }
 
     function toggleTheme() {
       config.appearance.theme = resolveTheme(config.appearance.theme) === 'dark' ? 'light' : 'dark';
-      storageSet(STORAGE_KEYS.theme, config.appearance.theme);
+      saveData();
       applyTheme();
     }
 
@@ -868,10 +1149,66 @@
         else button.removeAttribute('aria-current');
       }
 
+      const renderer = SETTINGS_RENDERERS[section.id];
       $('#settingsPanel').replaceChildren(
         el('h3', {}, section.label),
         el('p', { class: 'muted' }, section.description),
-        el('p', { class: 'settings-placeholder' }, 'Deze instellingen worden in fase 4 toegevoegd.'));
+        ...(renderer
+          ? renderer()
+          : [el('p', { class: 'settings-placeholder' }, 'Deze instellingen worden in fase 4 toegevoegd.')]));
+    }
+
+    const SETTINGS_RENDERERS = {
+      data: renderDataSettings
+    };
+
+    function renderDataSettings() {
+      const usage = el('dd', {}, '…');
+      const backup = el('dd', {}, '…');
+      const persisted = el('dd', {}, '…');
+      fillStorageFacts({ usage, backup, persisted });
+
+      return [
+        buildSettingsGroup('Exporteren',
+          'Download al je instellingen als bestand, als back-up of om over te zetten naar een andere computer. ' +
+          'Het bestand bevat ook je agenda-adres en de Worker-sleutel: bewaar het op een veilige plek.',
+          el('button', { class: 'btn btn--primary', type: 'button', 'data-action': 'export-config' }, 'Exporteren')),
+        buildSettingsGroup('Importeren',
+          'Zet instellingen terug uit een eerder geëxporteerd bestand. Je huidige instellingen worden vervangen.',
+          el('button', { class: 'btn', type: 'button', 'data-action': 'import-config' }, 'Bestand kiezen…')),
+        buildSettingsGroup('Standaardinstellingen',
+          'Zet alles terug naar de standaard. Exporteer eerst als je je huidige instellingen wilt bewaren.',
+          el('button', { class: 'btn btn--danger', type: 'button', 'data-action': 'reset-config' }, 'Terugzetten')),
+        buildSettingsGroup('Opslag',
+          'Je instellingen staan in deze browser op deze computer, niet in het bestand zelf. ' +
+          'Let op: "Browsegegevens wissen → Cookies en andere sitegegevens" in Edge wist ze ook.',
+          el('dl', { class: 'facts' },
+            el('dt', {}, 'Gebruikte opslag'), usage,
+            el('dt', {}, 'Back-up (IndexedDB)'), backup,
+            el('dt', {}, 'Beschermd tegen opruimen'), persisted))
+      ];
+    }
+
+    async function fillStorageFacts({ usage, backup, persisted }) {
+      initDB().then(() => { backup.textContent = 'Actief'; }, () => { backup.textContent = 'Niet beschikbaar'; });
+      try {
+        const { usage: bytes } = await navigator.storage.estimate();
+        usage.textContent = formatBytes(bytes);
+      } catch {
+        usage.textContent = 'Onbekend';
+      }
+      try {
+        persisted.textContent = (await navigator.storage.persisted()) ? 'Ja' : 'Nee (Edge beslist dit zelf)';
+      } catch {
+        persisted.textContent = 'Onbekend';
+      }
+    }
+
+    function buildSettingsGroup(title, description, ...content) {
+      return el('section', { class: 'settings-group' },
+        el('h4', {}, title),
+        el('p', {}, description),
+        el('div', { class: 'settings-group-content' }, content));
     }
 
     /* ======================================================================
@@ -893,6 +1230,40 @@
       }
       node.append(...children.flat(Infinity).filter(child => child != null && child !== false));
       return node;
+    }
+
+    function toast(message) {
+      const node = $('#toast');
+      node.textContent = message;
+      // Opnieuw tonen zet de melding bovenaan de top layer, dus ook boven een open modal.
+      if (node.matches(':popover-open')) node.hidePopover();
+      node.showPopover();
+      clearTimeout(timers.toast);
+      timers.toast = setTimeout(() => node.hidePopover(), 4500);
+    }
+
+    function isPlainObject(value) {
+      return typeof value === 'object' && value !== null && !Array.isArray(value);
+    }
+
+    function uid() {
+      return crypto.randomUUID().slice(0, 8);
+    }
+
+    function clamp(value, min, max) {
+      return Math.min(max, Math.max(min, value));
+    }
+
+    function dateStamp(date) {
+      const pad = number => String(number).padStart(2, '0');
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+    }
+
+    function formatBytes(bytes) {
+      const number = new Intl.NumberFormat('nl-NL', { maximumFractionDigits: 1 });
+      if (bytes < 1024) return `${bytes} B`;
+      if (bytes < 1024 ** 2) return `${number.format(bytes / 1024)} kB`;
+      return `${number.format(bytes / 1024 ** 2)} MB`;
     }
 
     function safeUrl(value, protocols) {
@@ -919,11 +1290,14 @@
     /* ======================================================================
        Init
        ====================================================================== */
-    function init() {
-      config = loadData();
+    async function init() {
+      const { data, status } = loadData();
+      config = data;
       renderDashboard();
       bindEvents();
       startClock();
+      await syncBackup(status);
+      requestPersistentStorage();
     }
 
     init();

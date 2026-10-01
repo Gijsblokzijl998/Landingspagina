@@ -407,7 +407,7 @@ Elke fase levert een werkend `index.html` op en wordt apart gecommit. Grootte: S
 |------|-----------|------------|----------------|---------|
 | **0** | Plan & keuzes | dit document | keuzes V1–V5 vastgelegd ✅ | S |
 | **1** | Skelet & thema | HTML-structuur, CSS-variabelen, header, grid met `DEFAULT_CONFIG`-tegels, klok, themaknop, modal-skelet, responsive layout | pagina toont header + grid + quick links; thema wisselt zonder flits en blijft bewaard; goed bij smal en breed venster ✅ | M |
-| **2** | Opslag | `loadData`/`saveData`, `initDB`, `mergeDefaults`, `migrateConfig`, `persist()`, export/import | wijzigingen overleven herladen; corrupte localStorage → herstel uit IndexedDB; export → import geeft identiek dashboard | M |
+| **2** | Opslag | `loadData`/`saveData`, `initDB`, `mergeDefaults`, `migrateConfig`, `persist()`, export/import | wijzigingen overleven herladen; corrupte localStorage → herstel uit IndexedDB; export → import geeft identiek dashboard ✅ | M |
 | **3** | Tegels & navigatie | `link` (url / path / session-file), pad kopiëren, Office-URI-onderzoek, `links`-tegel, quick links-balk, grid-capaciteit | alle doeltypen werken in Edge zoals in §6; toetsenbordbediening werkt | M |
 | **4** | Instellingenmodal | zijbalk + alle categorieën uit §3.4, tegel-editor (toevoegen/bewerken/verwijderen/volgorde), validatie, opslaan/annuleren | alles uit `DEFAULT_CONFIG` is via de UI aan te passen zonder code te wijzigen | L |
 | **5** | Weer | `fetchWeather`, `geocode` in de instellingen, `WMO_CODES`, cache | plaats zoeken → kiezen → weer in de header; offline toont de laatste waarde | S |
@@ -461,5 +461,7 @@ Worker en kan eventueel naar voren.
 ## 13. Volgende stap
 
 1. ~~**Fase 1**: het skelet van `index.html`~~ ✅ (header, grid, snelle links, thema, klok, modal-skelet).
-2. **Fase 2**: opslag (`loadData`/`saveData`, IndexedDB, export/import).
-3. Na elke fase samen kijken en waar nodig het plan bijstellen. Dit document wordt bijgewerkt als keuzes veranderen.
+2. ~~**Fase 2**: opslag~~ ✅ (`loadData`/`saveData`, IndexedDB-back-up met automatisch herstel, export/import/terugzetten
+   in Instellingen → Gegevens, synchronisatie tussen tabbladen).
+3. **Fase 3**: tegels en navigatie (paden, sessiebestanden, pad kopiëren, Office-bestanden).
+4. Na elke fase samen kijken en waar nodig het plan bijstellen. Dit document wordt bijgewerkt als keuzes veranderen.

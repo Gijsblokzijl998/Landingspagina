@@ -7,14 +7,15 @@ Ontwerp, keuzes en fasering staan in [PROJECTPLAN.md](PROJECTPLAN.md).
 
 ## Status
 
-**Fase 1 (skelet en thema) is klaar.** Werkend:
+**Fase 1 (skelet en thema) en fase 2 (opslag) zijn klaar.** Werkend:
 - header met titel, welkomsttekst en klok;
 - het tegelgrid;
 - de balk met snelle links;
 - het licht/donker-thema;
-- een eerste opzet van het instellingenscherm.
+- instellingen worden bewaard, met een automatische back-up;
+- exporteren, importeren en terugzetten via ⚙ Instellingen → Gegevens.
 
-Instellingen opslaan, het weer, RSS en de agenda volgen in de volgende fases.
+Tegels bewerken, het weer, RSS en de agenda volgen in de volgende fases.
 
 ## Installeren als startpagina in Edge
 
@@ -31,4 +32,5 @@ Vervang `index.html` door de nieuwe versie. **Je instellingen blijven bewaard.**
 (gedeeld door alle lokale bestanden), niet in het bestand zelf.
 
 Let op: *Browsegegevens wissen → Cookies en andere sitegegevens* in Edge wist ook de instellingen van het
-dashboard. Een export als back-up komt in fase 2.
+dashboard. Maak daarom af en toe een export via ⚙ Instellingen → **Gegevens** → **Exporteren**. Met
+**Importeren** zet je hem terug, ook op een andere computer.
