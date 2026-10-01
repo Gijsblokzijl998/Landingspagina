@@ -527,6 +527,36 @@
 
     .tile--calendar { grid-column: span 2; grid-row: span 2; }
 
+    /* Agenda */
+    .agenda { display: grid; gap: 10px; }
+    .agenda-date {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      padding: 2px 0 3px;
+      background: var(--surface);
+      color: var(--text-muted);
+      font-size: .72rem;
+      font-weight: 600;
+    }
+    .agenda-list { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+    .agenda-item {
+      display: grid;
+      grid-template-columns: 78px minmax(0, 1fr);
+      gap: 8px;
+      padding: 4px 6px;
+      border-left: 2px solid transparent;
+      border-radius: 6px;
+      font-size: .8rem;
+      line-height: 1.3;
+    }
+    .agenda-item.is-past { opacity: .45; }
+    .agenda-item.is-now { border-left-color: var(--text-muted); background: var(--surface-hover); }
+    .agenda-time { padding-top: 1px; color: var(--text-muted); font-size: .72rem; font-variant-numeric: tabular-nums; }
+    .agenda-text { display: grid; min-width: 0; }
+    .agenda-title, .agenda-location { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .agenda-location { color: var(--text-muted); font-size: .7rem; }
+
     /* Verslepen */
     .grid > [draggable="true"] { cursor: grab; }
     .grid.is-sorting .tile { transition: none; }
@@ -938,6 +968,26 @@
     const WEATHER_REFRESH_MS = 30 * 60_000;
     const RSS_REFRESH_MS = 15 * 60_000;
     const RSS_CACHE_ITEMS = 30;       // zoveel berichten per feed bewaren in de cache
+    const ICS_REFRESH_MS = 15 * 60_000;
+    const ICS_CACHE_DAYS = 90;        // afspraken zo ver vooruit uitwerken en bewaren
+    const DAY_MS = 86_400_000;
+    const WEEKDAYS = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
+
+    // Outlook gebruikt Windows-namen voor tijdzones; Google gebruikt IANA-namen, die Intl direct kent.
+    const WINDOWS_TIMEZONES = {
+      'W. Europe Standard Time': 'Europe/Amsterdam',
+      'Romance Standard Time': 'Europe/Paris',
+      'Central Europe Standard Time': 'Europe/Budapest',
+      'Central European Standard Time': 'Europe/Warsaw',
+      'GMT Standard Time': 'Europe/London',
+      'Greenwich Standard Time': 'Atlantic/Reykjavik',
+      'E. Europe Standard Time': 'Europe/Chisinau',
+      'FLE Standard Time': 'Europe/Helsinki',
+      'Eastern Standard Time': 'America/New_York',
+      'Central Standard Time': 'America/Chicago',
+      'Pacific Standard Time': 'America/Los_Angeles',
+      'UTC': 'UTC'
+    };
 
     // WMO-weercode (Open-Meteo) → [icoon overdag, icoon 's nachts, omschrijving]
     const WMO_CODES = {
@@ -1205,6 +1255,8 @@
     const SHORT_DATE_FORMAT = new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'short' });
     const FULL_DATE_TIME_FORMAT = new Intl.DateTimeFormat('nl-NL', { dateStyle: 'full', timeStyle: 'short' });
     const RELATIVE_TIME_FORMAT = new Intl.RelativeTimeFormat('nl', { numeric: 'auto' });
+    const AGENDA_DAY_FORMAT = new Intl.DateTimeFormat('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' });
+    const AGENDA_FULL_DAY_FORMAT = new Intl.DateTimeFormat('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
 
     /* ======================================================================
        State
@@ -1220,6 +1272,9 @@
     let placeSearchRun = 0;
     const feedState = new Map();      // feed-URL → { fetchedAt, feed: { title, items }, error }
     const feedRequests = new Map();   // feed-URL → lopende ophaalactie, zodat een feed niet dubbel wordt opgehaald
+    const calendarState = new Map();  // agenda-URL → { fetchedAt, name, occurrences, error }
+    const calendarRequests = new Map();
+    const zoneFormatters = new Map(); // tijdzone → Intl.DateTimeFormat, voor het omrekenen naar UTC
     let activeSettingsSection = SETTINGS_SECTIONS[0].id;
     const timers = {};
     const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -1301,6 +1356,7 @@
       startClock();
       updateWeather();
       updateFeeds();
+      updateCalendars();
     }
 
     function initDB() {
@@ -1681,13 +1737,104 @@
     function buildCalendarTile(tile) {
       return el('section', { class: 'tile tile--calendar', 'aria-label': tile.title },
         buildTileHeading(tile),
-        el('div', { class: 'tile-body' }, buildTileState(dataTileMessage(tile))));
+        el('div', { class: 'tile-body' }, buildCalendarContent(tile)));
     }
 
-    function dataTileMessage(tile) {
-      if (!tile.icsUrl) return 'Voeg het iCal-adres van je Google Agenda toe via ⚙ Instellingen → Tegels.';
-      if (!config.services.workerUrl) return 'Koppel eerst de Worker via ⚙ Instellingen → Koppelingen.';
-      return 'De agenda wordt vanaf fase 8 opgehaald.';
+    // Afspraken per dag, van vandaag tot daysAhead dagen vooruit.
+    function buildCalendarContent(tile, now = new Date()) {
+      if (!tile.icsUrl) return buildTileState('Voeg het iCal-adres van je Google Agenda toe via ⚙ Instellingen → Tegels.');
+      if (!config.services.workerUrl) return buildTileState('Koppel eerst de Worker via ⚙ Instellingen → Koppelingen.');
+
+      const state = calendarState.get(tile.icsUrl);
+      if (!state?.occurrences) {
+        return state?.error
+          ? buildTileState(`De agenda kon niet worden geladen: ${state.error}`, true)
+          : buildTileState('Laden…');
+      }
+
+      const days = groupByDay(state.occurrences, tile.daysAhead, now);
+      const stale = state.error
+        ? el('p', { class: 'feed-stale', title: state.error },
+            `Bijwerken mislukt; dit is de stand van ${TIME_FORMAT.format(new Date(state.fetchedAt))}.`)
+        : null;
+      if (!days.length) return [buildTileState(`Geen afspraken in de komende ${tile.daysAhead} dagen.`), stale];
+
+      const today = localDayNumber(now);
+      return [
+        el('div', { class: 'agenda' }, days.map(day => el('section', { class: 'agenda-day' },
+          el('h3', { class: 'agenda-date', title: AGENDA_FULL_DAY_FORMAT.format(dayStart(day.day)) },
+            day.day === today ? 'Vandaag' : day.day === today + 1 ? 'Morgen' : capitalize(AGENDA_DAY_FORMAT.format(dayStart(day.day)))),
+          el('ul', { class: 'agenda-list' }, day.items.map(item => buildAgendaItem(item, day.day, now)))))),
+        stale
+      ];
+    }
+
+    function buildAgendaItem(item, day, now) {
+      let time;
+      let past = false;
+      let current = false;
+      if (item.allDay) {
+        time = 'Hele dag';
+      } else {
+        const start = new Date(item.start);
+        const end = new Date(item.end);
+        const startsToday = localDayNumber(start) === day;
+        const endsToday = localDayNumber(new Date(end - 1)) === day || end.getTime() === start.getTime();
+        time = startsToday
+          ? (end > start && endsToday ? `${TIME_FORMAT.format(start)}–${TIME_FORMAT.format(end)}` : TIME_FORMAT.format(start))
+          : endsToday ? `tot ${TIME_FORMAT.format(end)}` : 'Hele dag';
+        past = end <= now && end > start;
+        current = start <= now && now < end;
+      }
+      return el('li', { class: `agenda-item${past ? ' is-past' : ''}${current ? ' is-now' : ''}` },
+        el('span', { class: 'agenda-time' }, time),
+        el('span', { class: 'agenda-text' },
+          el('span', { class: 'agenda-title' }, item.title),
+          item.location ? el('span', { class: 'agenda-location' }, item.location) : null));
+    }
+
+    // Verdeelt afspraken over dagen. Meerdaagse afspraken staan op elke dag; lopende afspraken van gisteren op vandaag.
+    function groupByDay(occurrences, daysAhead, now) {
+      const today = localDayNumber(now);
+      const lastDay = today + daysAhead - 1;
+      const days = new Map();
+      const add = (day, item) => {
+        if (day < today || day > lastDay) return;
+        if (!days.has(day)) days.set(day, []);
+        days.get(day).push(item);
+      };
+
+      for (const item of occurrences) {
+        if (item.allDay) {
+          const last = dateKeyToDayNumber(item.endDay) - 1;
+          for (let day = Math.max(dateKeyToDayNumber(item.startDay), today); day <= Math.min(last, lastDay); day++) add(day, item);
+        } else {
+          const start = new Date(item.start);
+          const end = new Date(item.end);
+          const firstDay = localDayNumber(start);
+          const lastItemDay = end > start ? localDayNumber(new Date(end - 1)) : firstDay;
+          if (lastItemDay < today) continue;
+          for (let day = Math.max(firstDay, today); day <= Math.min(lastItemDay, lastDay); day++) add(day, item);
+        }
+      }
+
+      return [...days.entries()]
+        .sort(([a], [b]) => a - b)
+        .map(([day, items]) => ({
+          day,
+          items: items.sort((a, b) => (b.allDay - a.allDay) || (a.sortKey - b.sortKey) || a.title.localeCompare(b.title))
+        }));
+    }
+
+    function renderCalendarTiles(icsUrl = null) {
+      for (const tile of config.tiles) {
+        if (tile.type !== 'calendar' || (icsUrl && tile.icsUrl !== icsUrl)) continue;
+        const body = $(`[data-tile-id="${CSS.escape(tile.id)}"] .tile-body`);
+        if (!body) continue;
+        const scrollTop = body.scrollTop;
+        body.replaceChildren(...[buildCalendarContent(tile)].flat().filter(Boolean));
+        body.scrollTop = scrollTop;
+      }
     }
 
     function buildTileHeading(tile) {
@@ -1783,6 +1930,7 @@
         startClock();
         updateWeather();
         updateFeeds();
+        updateCalendars();
       });
 
       // Wijzigingen uit een ander tabblad met het dashboard overnemen, zodat een oud tabblad ze niet overschrijft.
@@ -1796,6 +1944,7 @@
           startClock();
           updateWeather();
           updateFeeds();
+          updateCalendars();
         } catch {
           // Onleesbare waarde: negeren, de eigen config blijft gelden.
         }
@@ -2128,6 +2277,415 @@
       } catch {
         return '';
       }
+    }
+
+    /* ---------- Agenda (ICS) ---------- */
+    async function updateCalendars({ force = false } = {}) {
+      clearTimeout(timers.calendar);
+      const urls = [...new Set(config.tiles.filter(tile => tile.type === 'calendar' && tile.icsUrl).map(tile => tile.icsUrl))];
+      await Promise.all(urls.map(url => {
+        if (!calendarRequests.has(url)) {
+          calendarRequests.set(url, refreshCalendar(url, force).finally(() => calendarRequests.delete(url)));
+        }
+        return calendarRequests.get(url);
+      }));
+      const failed = urls.some(url => calendarState.get(url)?.error);
+      timers.calendar = setTimeout(updateCalendars, failed ? 2 * 60_000 : ICS_REFRESH_MS);
+    }
+
+    async function refreshCalendar(url, force) {
+      if (!calendarState.has(url)) {
+        const cached = await idbGet('cache', `ics:${url}`).catch(() => null);
+        if (cached?.occurrences) {
+          calendarState.set(url, { ...cached, error: null });
+          renderCalendarTiles(url);
+        }
+      }
+      const state = calendarState.get(url);
+      if (!config.services.workerUrl) return;
+      if (!force && state?.occurrences && !state.error && Date.now() - state.fetchedAt < ICS_REFRESH_MS) return;
+
+      try {
+        const calendar = parseICS(await proxyFetch('/ics', url));
+        const from = dayStart(localDayNumber(new Date()));
+        const occurrences = expandEvents(calendar, from, from + ICS_CACHE_DAYS * DAY_MS);
+        const next = { fetchedAt: Date.now(), name: calendar.name, occurrences, error: null };
+        calendarState.set(url, next);
+        idbPut('cache', `ics:${url}`, { fetchedAt: next.fetchedAt, name: next.name, occurrences }).catch(() => {});
+      } catch (error) {
+        calendarState.set(url, {
+          fetchedAt: state?.fetchedAt ?? 0,
+          name: state?.name ?? '',
+          occurrences: state?.occurrences ?? null,
+          error: error.message || 'onbekende fout.'
+        });
+      }
+      renderCalendarTiles(url);
+    }
+
+    // Leest een iCalendar-bestand (RFC 5545) tot ruwe VEVENT-gegevens. Alarmen en tijdzonedefinities worden overgeslagen.
+    function parseICS(text) {
+      if (!/BEGIN:VCALENDAR/i.test(text)) throw new Error('dit is geen iCal-agenda (.ics).');
+      const calendar = { name: '', timezone: '', events: [] };
+      let event = null;
+      let nested = 0; // VALARM e.d. binnen een VEVENT
+
+      // Regels die met een spatie of tab beginnen horen bij de vorige regel ("unfolding").
+      for (const line of text.replace(/\r?\n[ \t]/g, '').split(/\r?\n/)) {
+        const property = parseProperty(line);
+        if (!property) continue;
+        const { name, params, value } = property;
+
+        if (name === 'BEGIN') {
+          if (value.toUpperCase() === 'VEVENT' && !event) event = { exdates: [] };
+          else if (event) nested++;
+          continue;
+        }
+        if (name === 'END') {
+          if (event && nested) nested--;
+          else if (event && value.toUpperCase() === 'VEVENT') {
+            calendar.events.push(event);
+            event = null;
+          }
+          continue;
+        }
+        if (!event) {
+          if (name === 'X-WR-CALNAME') calendar.name = unescapeText(value);
+          if (name === 'X-WR-TIMEZONE') calendar.timezone = value.trim();
+          continue;
+        }
+        if (nested) continue;
+
+        switch (name) {
+          case 'UID': event.uid = value; break;
+          case 'SUMMARY': event.title = unescapeText(value); break;
+          case 'LOCATION': event.location = unescapeText(value); break;
+          case 'STATUS': event.status = value.toUpperCase(); break;
+          case 'DTSTART': event.start = { value, params }; break;
+          case 'DTEND': event.end = { value, params }; break;
+          case 'DURATION': event.duration = value; break;
+          case 'RRULE': event.rrule = parseRRule(value); break;
+          case 'RECURRENCE-ID': event.recurrenceId = { value, params }; break;
+          case 'EXDATE': event.exdates.push(...value.split(',').map(part => ({ value: part.trim(), params }))); break;
+        }
+      }
+      return calendar;
+    }
+
+    // NAAM;PARAM=waarde;PARAM="waarde:met:dubbelepunten":WAARDE
+    function parseProperty(line) {
+      let quoted = false;
+      let colon = -1;
+      for (let index = 0; index < line.length; index++) {
+        if (line[index] === '"') quoted = !quoted;
+        else if (line[index] === ':' && !quoted) {
+          colon = index;
+          break;
+        }
+      }
+      if (colon < 1) return null;
+
+      const parts = [];
+      let current = '';
+      quoted = false;
+      for (const char of line.slice(0, colon)) {
+        if (char === '"') quoted = !quoted;
+        if (char === ';' && !quoted) {
+          parts.push(current);
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      parts.push(current);
+
+      const params = {};
+      for (const part of parts.slice(1)) {
+        const equals = part.indexOf('=');
+        if (equals > 0) params[part.slice(0, equals).toUpperCase()] = part.slice(equals + 1).replace(/^"(.*)"$/, '$1');
+      }
+      return { name: parts[0].toUpperCase(), params, value: line.slice(colon + 1) };
+    }
+
+    function unescapeText(value) {
+      return value.replace(/\\([nN,;\\])/g, (_, char) => (char === 'n' || char === 'N' ? '\n' : char)).trim();
+    }
+
+    function parseRRule(value) {
+      const rule = {};
+      for (const part of value.split(';')) {
+        const [key, raw = ''] = part.split('=');
+        const name = key.toUpperCase();
+        if (name === 'FREQ' || name === 'UNTIL' || name === 'WKST') rule[name] = raw.toUpperCase();
+        else if (name === 'INTERVAL' || name === 'COUNT') rule[name] = Number(raw);
+        else if (name === 'BYDAY') {
+          rule.BYDAY = raw.split(',').map(item => {
+            const match = item.toUpperCase().match(/^([+-]?\d+)?(SU|MO|TU|WE|TH|FR|SA)$/);
+            return match ? { n: match[1] ? Number(match[1]) : 0, weekday: WEEKDAYS.indexOf(match[2]) } : null;
+          }).filter(Boolean);
+        } else if (name === 'BYMONTHDAY' || name === 'BYMONTH' || name === 'BYSETPOS') {
+          rule[name] = raw.split(',').map(Number).filter(Number.isFinite);
+        }
+      }
+      return rule;
+    }
+
+    // Datum (hele dag) → { allDay, day }; datum-tijd → { allDay: false, ms, wall, zone }.
+    function parseICSDate(property, defaultZone) {
+      const match = property.value.trim().match(/^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})?(Z)?)?$/);
+      if (!match) return null;
+      const [, year, month, date, hour, minute, second = '00', utc] = match;
+      if (property.params.VALUE === 'DATE' || hour === undefined) {
+        return { allDay: true, day: dayNumber(Number(year), Number(month), Number(date)) };
+      }
+      const wall = [year, month, date, hour, minute, second].map(Number);
+      const zone = utc ? 'UTC' : resolveZone(property.params.TZID) ?? defaultZone ?? null;
+      return { allDay: false, ms: zonedToUtc(wall, zone), wall, zone };
+    }
+
+    function resolveZone(tzid) {
+      if (!tzid) return null;
+      const name = WINDOWS_TIMEZONES[tzid.trim()] ?? tzid.trim().replace(/^\//, '');
+      try {
+        new Intl.DateTimeFormat('en-US', { timeZone: name });
+        return name;
+      } catch {
+        return null; // onbekende tijdzone: dan geldt de tijdzone van de agenda of de lokale tijd
+      }
+    }
+
+    // Wandkloktijd in een tijdzone → UTC-milliseconden. zone null = lokale tijd van de computer.
+    function zonedToUtc([year, month, date, hour, minute, second], zone) {
+      if (!zone) return new Date(year, month - 1, date, hour, minute, second).getTime();
+      const guess = Date.UTC(year, month - 1, date, hour, minute, second);
+      if (zone === 'UTC') return guess;
+      const first = guess - zoneOffset(zone, guess);
+      return guess - zoneOffset(zone, first); // tweede ronde vangt de overgang van zomer- naar wintertijd op
+    }
+
+    function zoneOffset(zone, ms) {
+      let formatter = zoneFormatters.get(zone);
+      if (!formatter) {
+        formatter = new Intl.DateTimeFormat('en-US', {
+          timeZone: zone, hourCycle: 'h23',
+          year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric'
+        });
+        zoneFormatters.set(zone, formatter);
+      }
+      const parts = Object.fromEntries(formatter.formatToParts(new Date(ms)).map(part => [part.type, part.value]));
+      const asUtc = Date.UTC(Number(parts.year), parts.month - 1, Number(parts.day), Number(parts.hour), Number(parts.minute), Number(parts.second));
+      return asUtc - Math.floor(ms / 1000) * 1000;
+    }
+
+    // Werkt alle afspraken uit die het venster [from, to) raken, inclusief herhalingen, uitzonderingen (EXDATE)
+    // en verplaatste of geannuleerde exemplaren (RECURRENCE-ID).
+    function expandEvents(calendar, from, to) {
+      const zone = resolveZone(calendar.timezone);
+      const overridden = new Set();
+      for (const event of calendar.events) {
+        if (!event.recurrenceId || !event.uid) continue;
+        const original = parseICSDate(event.recurrenceId, zone);
+        if (original) overridden.add(`${event.uid}|${occurrenceKey(original)}`);
+      }
+
+      const occurrences = [];
+      for (const event of calendar.events) {
+        const start = event.start && parseICSDate(event.start, zone);
+        if (!start) continue;
+        const length = eventLength(event, start, zone);
+        const cancelled = event.status === 'CANCELLED';
+
+        if (event.rrule && !event.recurrenceId) {
+          const excluded = new Set(event.exdates.map(exdate => parseICSDate(exdate, start.zone ?? zone)).filter(Boolean).map(occurrenceKey));
+          for (const occurrence of recurrences(event.rrule, start, to)) {
+            const key = occurrenceKey(occurrence);
+            if (cancelled || excluded.has(key) || overridden.has(`${event.uid}|${key}`)) continue;
+            addOccurrence(occurrences, event, occurrence, length, from, to);
+          }
+        } else if (!cancelled) {
+          addOccurrence(occurrences, event, start, length, from, to);
+        }
+      }
+      return occurrences.sort((a, b) => a.sortKey - b.sortKey);
+    }
+
+    function occurrenceKey(moment) {
+      return moment.allDay ? `D${moment.day}` : `T${moment.ms}`;
+    }
+
+    function eventLength(event, start, zone) {
+      const end = event.end && parseICSDate(event.end, zone);
+      if (end && start.allDay && end.allDay) return { days: Math.max(1, end.day - start.day) };
+      if (end && !start.allDay && !end.allDay) return { ms: Math.max(0, end.ms - start.ms) };
+      const duration = event.duration ? parseDuration(event.duration) : 0;
+      if (start.allDay) return { days: Math.max(1, Math.round(duration / DAY_MS)) };
+      return { ms: Math.max(0, duration) };
+    }
+
+    function parseDuration(value) {
+      const match = value.trim().match(/^([+-])?P(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/);
+      if (!match) return 0;
+      const [, sign, weeks = 0, days = 0, hours = 0, minutes = 0, seconds = 0] = match;
+      const ms = (((Number(weeks) * 7 + Number(days)) * 24 + Number(hours)) * 60 + Number(minutes)) * 60_000 + Number(seconds) * 1000;
+      return sign === '-' ? -ms : ms;
+    }
+
+    function addOccurrence(list, event, start, length, from, to) {
+      let startMs;
+      let endMs;
+      let moment;
+      if (start.allDay) {
+        startMs = dayStart(start.day);
+        endMs = dayStart(start.day + length.days);
+        moment = { allDay: true, startDay: dateKey(start.day), endDay: dateKey(start.day + length.days) }; // eind exclusief
+      } else {
+        startMs = start.ms;
+        endMs = start.ms + length.ms;
+        moment = { allDay: false, start: new Date(startMs).toISOString(), end: new Date(endMs).toISOString() };
+      }
+      // Een afspraak zonder duur telt mee als hij binnen het venster begint.
+      if (Math.max(endMs, startMs + 1) <= from || startMs >= to) return;
+      list.push({ uid: event.uid ?? '', title: event.title || '(geen titel)', location: event.location ?? '', ...moment, sortKey: startMs });
+    }
+
+    // Genereert de exemplaren van een herhalende afspraak (RRULE) in volgorde, tot het eind van het venster.
+    // Herhalingen gaan uit van de wandkloktijd in de tijdzone van de afspraak, zodat 09:00 ook na de
+    // overgang naar winter- of zomertijd 09:00 blijft.
+    function* recurrences(rule, start, windowEnd) {
+      const frequency = rule.FREQ;
+      if (!['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'].includes(frequency)) {
+        yield start;
+        return;
+      }
+      const interval = Math.max(1, rule.INTERVAL || 1);
+      const maxCount = rule.COUNT > 0 ? rule.COUNT : Infinity;
+      const startDay = start.allDay ? start.day : dayNumber(start.wall[0], start.wall[1], start.wall[2]);
+      const time = start.allDay ? null : start.wall.slice(3);
+      const { y: startYear, m: startMonth, d: startDate } = fromDayNumber(startDay);
+
+      let untilDay = Infinity;
+      let untilMs = Infinity;
+      if (rule.UNTIL) {
+        const until = parseICSDate({ value: rule.UNTIL, params: {} }, start.zone);
+        if (until?.allDay) {
+          untilDay = until.day;
+          untilMs = start.allDay ? Infinity : zonedToUtc([...Object.values(fromDayNumber(until.day)).slice(0, 3), 23, 59, 59], start.zone);
+        } else if (until) {
+          untilMs = until.ms;
+          untilDay = localDayNumber(new Date(until.ms));
+        }
+      }
+
+      const makeOccurrence = day => {
+        if (start.allDay) return { allDay: true, day };
+        const { y, m, d } = fromDayNumber(day);
+        const wall = [y, m, d, ...time];
+        return { allDay: false, ms: zonedToUtc(wall, start.zone), wall, zone: start.zone };
+      };
+      const weekdayOf = day => ((day % 7) + 11) % 7; // dag 0 (1-1-1970) was een donderdag
+      const byWeekday = rule.BYDAY?.length ? rule.BYDAY : null;
+      const weekStart = WEEKDAYS.indexOf(rule.WKST ?? 'MO');
+
+      let count = 0;
+      for (let period = 0; period < 100_000; period++) {
+        let candidates = [];
+        if (frequency === 'DAILY') {
+          candidates = [startDay + period * interval];
+        } else if (frequency === 'WEEKLY') {
+          const firstWeekDay = startDay - ((weekdayOf(startDay) - weekStart + 7) % 7);
+          const begin = firstWeekDay + period * 7 * interval;
+          const weekdays = byWeekday ? byWeekday.map(item => item.weekday) : [weekdayOf(startDay)];
+          for (let offset = 0; offset < 7; offset++) {
+            if (weekdays.includes(weekdayOf(begin + offset))) candidates.push(begin + offset);
+          }
+        } else if (frequency === 'MONTHLY') {
+          const monthIndex = startYear * 12 + (startMonth - 1) + period * interval;
+          candidates = monthDays(Math.floor(monthIndex / 12), (monthIndex % 12) + 1, rule, startDate);
+        } else {
+          const year = startYear + period * interval;
+          const months = rule.BYMONTH?.length ? rule.BYMONTH : [startMonth];
+          candidates = months.flatMap(month => monthDays(year, month, rule, startDate));
+        }
+
+        // Beperkingen die voor elke frequentie gelden.
+        if (rule.BYMONTH?.length && frequency !== 'YEARLY') {
+          candidates = candidates.filter(day => rule.BYMONTH.includes(fromDayNumber(day).m));
+        }
+        if (frequency === 'DAILY') {
+          if (byWeekday) candidates = candidates.filter(day => byWeekday.some(item => item.weekday === weekdayOf(day)));
+          if (rule.BYMONTHDAY?.length) candidates = candidates.filter(day => rule.BYMONTHDAY.includes(fromDayNumber(day).d));
+        }
+        candidates = [...new Set(candidates)].sort((a, b) => a - b);
+        if (rule.BYSETPOS?.length) {
+          const all = candidates;
+          candidates = rule.BYSETPOS.map(position => all[position > 0 ? position - 1 : all.length + position])
+            .filter(day => day !== undefined)
+            .sort((a, b) => a - b);
+        }
+
+        for (const day of candidates) {
+          if (day < startDay) continue;
+          const occurrence = makeOccurrence(day);
+          if (start.allDay ? day > untilDay : occurrence.ms > untilMs) return;
+          count++;
+          if (count > maxCount) return;
+          if ((start.allDay ? dayStart(day) : occurrence.ms) >= windowEnd) return;
+          yield occurrence;
+        }
+      }
+    }
+
+    // De dagen in een maand die bij BYMONTHDAY en/of BYDAY passen (met volgnummer: 1MO, -1FR).
+    function monthDays(year, month, rule, defaultDate) {
+      const length = new Date(Date.UTC(year, month, 0)).getUTCDate();
+      const first = dayNumber(year, month, 1);
+      let dates = null;
+      if (rule.BYMONTHDAY?.length) {
+        dates = rule.BYMONTHDAY.map(n => (n > 0 ? n : length + n + 1)).filter(date => date >= 1 && date <= length);
+      }
+      if (rule.BYDAY?.length) {
+        const byDay = rule.BYDAY.flatMap(({ n, weekday }) => {
+          const matches = [];
+          for (let date = 1; date <= length; date++) {
+            if (((first + date - 1) % 7 + 11) % 7 === weekday) matches.push(date);
+          }
+          if (!n) return matches;
+          const pick = n > 0 ? matches[n - 1] : matches[matches.length + n];
+          return pick ? [pick] : [];
+        });
+        dates = dates ? dates.filter(date => byDay.includes(date)) : byDay;
+      }
+      if (!dates) dates = defaultDate <= length ? [defaultDate] : [];
+      return dates.map(date => first + date - 1);
+    }
+
+    function dayNumber(year, month, date) {
+      return Math.floor(Date.UTC(year, month - 1, date) / DAY_MS);
+    }
+
+    function fromDayNumber(day) {
+      const date = new Date(day * DAY_MS);
+      return { y: date.getUTCFullYear(), m: date.getUTCMonth() + 1, d: date.getUTCDate() };
+    }
+
+    function localDayNumber(date) {
+      return dayNumber(date.getFullYear(), date.getMonth() + 1, date.getDate());
+    }
+
+    // Lokale middernacht van een dagnummer, in milliseconden.
+    function dayStart(day) {
+      const { y, m, d } = fromDayNumber(day);
+      return new Date(y, m - 1, d).getTime();
+    }
+
+    function dateKey(day) {
+      const { y, m, d } = fromDayNumber(day);
+      return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    }
+
+    function dateKeyToDayNumber(key) {
+      const [year, month, date] = key.split('-').map(Number);
+      return dayNumber(year, month, date);
     }
 
     async function geocode(query) {
@@ -2930,6 +3488,10 @@
       return SHORT_DATE_FORMAT.format(date);
     }
 
+    function capitalize(text) {
+      return text.charAt(0).toUpperCase() + text.slice(1);
+    }
+
     function debounce(callback, delay) {
       let timer;
       return (...args) => {
@@ -2995,6 +3557,9 @@
       await syncBackup(status);
       updateWeather();
       updateFeeds();
+      updateCalendars();
+      // Elke minuut de agenda opnieuw tekenen: afgelopen afspraken vervagen, "nu" schuift mee, om middernacht een nieuwe dag.
+      setInterval(() => renderCalendarTiles(), 60_000);
       requestPersistentStorage();
     }
 

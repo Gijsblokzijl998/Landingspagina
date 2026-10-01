@@ -7,7 +7,7 @@ Ontwerp, keuzes en fasering staan in [PROJECTPLAN.md](PROJECTPLAN.md).
 
 ## Status
 
-**Fase 1 t/m 7 zijn klaar.** Alles stel je in via ⚙ Instellingen:
+**Fase 1 t/m 8 zijn klaar.** Alles stel je in via ⚙ Instellingen:
 - **Tegels** toevoegen, bewerken, ordenen en verwijderen. Versleep tegels ook direct op het dashboard. Een
   gewone tegel opent:
   - een **website**;
@@ -31,7 +31,10 @@ zelf, met de eerste letter als terugval; uitzetten kan bij Uiterlijk.
 - **RSS-tegels** tonen de nieuwste berichten van een RSS- of Atom-feed, opgehaald via die Worker en elke
   15 minuten ververst.
 
-De agenda volgt in de volgende fase.
+- **Agenda-tegel** (2 × 2) met je Google Agenda: plak bij de tegel het *geheime adres in iCal-indeling*
+  (Google Agenda → Instellingen → jouw agenda → *Agenda integreren*). Je ziet de afspraken van vandaag en de
+  komende dagen (standaard 30), inclusief herhalende afspraken. Afgelopen afspraken vervagen, de lopende afspraak
+  is gemarkeerd. De agenda wordt elke 15 minuten ververst via de Worker.
 
 **Office-bestanden:** een tegel naar een .docx, .xlsx of .pptx probeert het bestand direct in Word, Excel of
 PowerPoint te openen. Edge vraagt daarvoor eerst toestemming. Werkt dat niet, zet dan bij die tegel "Openen in
