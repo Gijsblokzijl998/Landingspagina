@@ -60,7 +60,7 @@ env.DASHBOARD_KEY = savedEnvKey;
 await p.click('[data-action="save-settings"]');
 check('opgeslagen', await p.evaluate(() => config.services.workerKey === 'mijn-geheime-sleutel'));
 
-// Kan het dashboard (file://, Origin: null) via de Worker een feed lezen? (voorbereiding fase 7)
+// Kan het dashboard (file://, Origin: null) via de Worker een feed lezen?
 const viaWorker = await p.evaluate(async () => {
   const response = await fetch(workerEndpoint(config.services, '/ics?url=' + encodeURIComponent('https://evil.example/x.ics')), { headers: { 'X-Dashboard-Key': config.services.workerKey } });
   return { status: response.status, body: await response.json() };

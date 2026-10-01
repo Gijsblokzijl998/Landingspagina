@@ -75,7 +75,8 @@ je agenda-adres en je Worker-sleutel, dus bewaar het veilig.
 | "De sleutel klopt niet" | De sleutel in het dashboard en het secret `DASHBOARD_KEY` in Cloudflare verschillen. |
 | "Het secret DASHBOARD_KEY is nog niet ingesteld" | Het secret ontbreekt of heeft type *Text* in plaats van *Secret*; zie [worker/README.md](worker/README.md). |
 | "Gebruik het workers.dev-adres van je Worker" | De beveiligingsregel van de pagina staat alleen verbindingen met `*.workers.dev` toe. |
-| "Bijwerken mislukt; dit is de stand van …" | De bron of je internet is even onbereikbaar. De pagina probeert het na een paar minuten opnieuw. |
+| "Bijwerken mislukt; dit is de stand van …" | De bron of je internet is even onbereikbaar. De pagina probeert het opnieuw na 2, dan 5, daarna elke 15 minuten; met *Opnieuw* direct. |
+| "De gewone opslag van de browser is vol" | Je instellingen staan wel in de back-up (IndexedDB) en komen bij het openen terug. Ruim eventueel grote achtergrondafbeeldingen op. |
 | Favicons zijn letters | Het logo van de site kon niet worden geladen, bijvoorbeeld door een netwerkfilter. De letter is de terugval. |
 
 ## Privacy en beveiliging

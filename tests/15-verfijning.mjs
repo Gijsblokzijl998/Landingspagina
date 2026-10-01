@@ -164,11 +164,6 @@ p.on('dialog', d => d.accept());
 await p.click('[data-action="cancel-settings"]');
 await other.close();
 
-// --- Favicons verversen in een tabblad dat lang openstaat ---
-const before = await p.evaluate(() => faviconUrls.length);
-await p.evaluate(() => refreshFavicons()); await p.waitForTimeout(400);
-check('favicons opnieuw opgevraagd en oude geheugen vrijgegeven', await p.evaluate(b => faviconRequests.size > 0 && faviconUrls.length > 0, before));
-
 // --- Inlaadanimatie ---
 const anim = await browser.newContext({ viewport: { width: 1280, height: 800 } });
 await anim.route(/^https?:/, r => r.fulfill({ status: 404, body: '' }));

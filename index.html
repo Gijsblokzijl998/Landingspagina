@@ -7,7 +7,7 @@
     Beveiligingsregel (CSP): alleen de twee ingebouwde scripts (vastgelegd met hun SHA-256), Open-Meteo, de Worker
     op workers.dev en afbeeldingen via https/data/blob/file. Na het wijzigen van een script: node tests/check-csp.mjs --fix
   -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-0rmtLU0ARXSsrvNsuB+4/Bmhz0qNOt8iOlmRWEBipkk=' 'sha256-OPjfB6YHAL58htlZBzMsqEQoA/7ahibAYTdAWlpGQDc='; style-src 'unsafe-inline'; img-src https: data: blob: file:; connect-src https://api.open-meteo.com https://geocoding-api.open-meteo.com https://*.workers.dev; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-0rmtLU0ARXSsrvNsuB+4/Bmhz0qNOt8iOlmRWEBipkk=' 'sha256-DzTm15bfRMGSH669D63b9F1uf3XPvkLuaGZjAygBbBk='; style-src 'unsafe-inline'; img-src https: data: blob: file:; connect-src https://api.open-meteo.com https://geocoding-api.open-meteo.com https://*.workers.dev; base-uri 'none'; form-action 'none'; object-src 'none'">
   <title>Mijn Dashboard</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='2' width='12' height='12' rx='3' fill='%232563eb'/%3E%3Crect x='18' y='2' width='12' height='12' rx='3' fill='%2360a5fa'/%3E%3Crect x='2' y='18' width='12' height='12' rx='3' fill='%2360a5fa'/%3E%3Crect x='18' y='18' width='12' height='12' rx='3' fill='%232563eb'/%3E%3C/svg%3E">
   <script>
@@ -1017,14 +1017,6 @@
     .facts dt { color: var(--text-muted); }
     .facts dd { margin: 0; }
 
-    .settings-placeholder {
-      margin-top: 12px;
-      padding: 12px 14px;
-      border: 1px dashed var(--border);
-      border-radius: 10px;
-      color: var(--text-muted);
-    }
-
     .settings-footer {
       display: flex;
       justify-content: flex-end;
@@ -1130,6 +1122,8 @@
        ====================================================================== */
     const STORAGE_KEYS = {
       config: 'lp:config',
+      savedAt: 'lp:savedAt', // tijdstip van de laatste geslaagde opslag in localStorage
+      favicons: 'lp:favicons', // host → adres van een favicon dat al eens gelukt is
       theme: 'lp:theme' // ook gelezen door het script in <head>
     };
 
@@ -1151,15 +1145,15 @@
       ({ host }) => `https://icons.duckduckgo.com/ip3/${host}.ico`,
       ({ host }) => `https://${host}/favicon.ico`
     ];
-    const FAVICON_MAX_AGE_MS = 7 * 24 * 3600_000;      // via de Worker gevonden favicon
     const FAVICON_MISSING_MAX_AGE_MS = 24 * 3600_000;  // "deze site heeft geen favicon"
-    const FAVICON_REFRESH_MS = 6 * 3600_000;           // open tabblad: favicons zo vaak opnieuw bekijken
     // Domeinen waarvan het hoofddomein uit drie delen bestaat (co.uk e.d.).
     const SECOND_LEVEL_SUFFIXES = ['co.uk', 'org.uk', 'ac.uk', 'gov.uk', 'com.au', 'co.nz', 'co.za', 'com.br', 'co.jp'];
     const WEATHER_REFRESH_MS = 30 * 60_000;
     const RSS_REFRESH_MS = 15 * 60_000;
     const RSS_CACHE_ITEMS = 30;       // zoveel berichten per feed bewaren in de cache
     const ICS_REFRESH_MS = 15 * 60_000;
+    // Na een mislukte poging: eerst na 2, dan na 5, daarna elke 15 minuten opnieuw (per feed of agenda).
+    const RETRY_DELAYS_MS = [2 * 60_000, 5 * 60_000, 15 * 60_000];
     const ICS_CACHE_DAYS = 90;        // afspraken zo ver vooruit uitwerken en bewaren
     const DAY_MS = 86_400_000;
     const WEEKDAYS = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
@@ -1335,7 +1329,7 @@
       storm: 'M19 16.9A5 5 0 0 0 18 7h-1.26a8 8 0 1 0-11.62 9M13 11l-4 6h6l-4 6'
     };
 
-    // Kiesbare lijniconen voor tegels (naam → [omschrijving, SVG-pad]); vormen gebaseerd op Feather Icons (MIT).
+    // Kiesbare lijniconen voor tegels (naam → [omschrijving, SVG-pad]); vormen gebaseerd op Feather Icons (MIT) en Lucide (ISC).
     const TILE_ICONS = {
       mail: ['E-mail', 'M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM22 6l-10 7L2 6'],
       inbox: ['Postvak', 'M22 12h-6l-2 3h-4l-2-3H2M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z'],
@@ -1507,7 +1501,6 @@
     const calendarState = new Map();  // agenda-URL → { fetchedAt, name, occurrences, error }
     const calendarRequests = new Map();
     const faviconRequests = new Map(); // host → Promise<{ url } | { missing } | null>
-    let faviconUrls = [];              // object-URL's van favicons, om ze bij verversen vrij te geven
     // Afbeeldingen (logo, achtergrond, tegelachtergronden) staan in IndexedDB; de config bevat "asset:<id>".
     const ASSET_PREFIX = 'asset:';
     const assetCache = new Map();      // id → data-URL
@@ -1550,31 +1543,53 @@
       }
 
       const data = normalizeConfig(DEFAULT_CONFIG);
-      const theme = storageGet(STORAGE_KEYS.theme); // fase 1 bewaarde alleen het thema
+      const theme = storageGet(STORAGE_KEYS.theme); // hetzelfde thema dat het script in <head> al toonde
       if (THEMES.includes(theme)) data.appearance.theme = theme;
       return { data, status: raw ? 'corrupt' : 'empty' };
     }
 
+    // Bewaart de config in localStorage (snel, bij het opstarten) en als back-up in IndexedDB. Mislukt localStorage
+    // maar de back-up niet, dan zijn de instellingen wél bewaard; bij het openen komt de nieuwste versie terug.
     function saveData() {
       storeImages(config);
+      const savedAt = Date.now();
+      let localError = null;
       try {
         localStorage.setItem(STORAGE_KEYS.config, JSON.stringify(config));
+        localStorage.setItem(STORAGE_KEYS.savedAt, String(savedAt));
       } catch (error) {
-        toast(error?.name === 'QuotaExceededError'
-          ? 'De opslag is vol: je instellingen zijn niet bewaard.'
-          : 'Je instellingen konden niet worden bewaard.');
+        localError = error;
       }
       storageSet(STORAGE_KEYS.theme, config.appearance.theme);
-      idbPut('kv', 'config', config).catch(() => {
-        // Geen IndexedDB: localStorage werkt nog, alleen zonder back-up.
+      const backup = saveBackup(config, savedAt);
+      if (!localError) {
+        backup.catch(() => {}); // geen IndexedDB: localStorage werkt, alleen zonder back-up
+        return;
+      }
+      backup.then(
+        () => toast('De gewone opslag van de browser is vol of geblokkeerd. Je instellingen zijn wel bewaard in de back-up (IndexedDB).'),
+        () => toast(localError.name === 'QuotaExceededError'
+          ? 'De opslag is vol: je instellingen zijn niet bewaard.'
+          : 'Je instellingen konden niet worden bewaard.'));
+    }
+
+    function saveBackup(data, savedAt) {
+      return idbRequest('kv', 'readwrite', store => {
+        store.put(savedAt, 'savedAt');
+        return store.put(data, 'config');
       });
     }
 
-    // Na het openen van IndexedDB: back-up bijwerken, of de config herstellen als localStorage leeg of kapot was.
+    // Na het openen van IndexedDB: de back-up bijwerken, of de config herstellen als localStorage leeg, kapot of
+    // ouder is dan de back-up (omdat het opslaan in localStorage eerder mislukte).
     async function syncBackup(status) {
       try {
         if (status === 'stored') {
-          await idbPut('kv', 'config', config);
+          const backupAt = await idbGet('kv', 'savedAt');
+          const localAt = Number(storageGet(STORAGE_KEYS.savedAt)) || 0;
+          const backup = backupAt > localAt ? normalizeConfig(await idbGet('kv', 'config')) : null;
+          if (backup) applyConfig(backup);
+          else await saveBackup(config, localAt || Date.now());
           return;
         }
         const backup = normalizeConfig(await idbGet('kv', 'config'));
@@ -1666,6 +1681,8 @@
     function applyConfig(data) {
       config = data;
       saveData();
+      // Nieuwe instellingen (bv. een andere sleutel): mislukte bronnen meteen opnieuw proberen.
+      for (const state of [...feedState.values(), ...calendarState.values()]) if (state.error) state.retryAt = 0;
       renderDashboard();
       startClock();
       updateWeather();
@@ -1921,12 +1938,11 @@
 
     function renderGrid() {
       const { gridColumns, gridRows } = config.appearance;
-      const layout = layoutTiles(config.tiles, gridColumns);
+      const layout = layoutTiles(config.tiles, gridColumns, gridRows * 2);
       const usedRows = clamp(Math.ceil(layout.bottom / 2), 2, gridRows);
 
       const grid = $('#tileGrid');
       grid.style.setProperty('--cfg-cols', gridColumns);
-      grid.dataset.cols = gridColumns;
       grid.style.setProperty('--fit-rows', usedRows);
 
       // In de volgorde waarin ze op het scherm staan, zodat Tab en een smal venster dezelfde volgorde volgen.
@@ -1961,10 +1977,19 @@
       return tiles.reduce((sum, tile) => sum + tileCells(tile, columns), 0);
     }
 
+    // Passen de tegels in het grid? Eerst het aantal vakken; daarna de echte indeling in halve rijen, want brede of
+    // halve tegels kunnen gaten laten die geen andere tegel opvult (bv. een agenda van 3 breed in 4 kolommen).
+    function gridFit(tiles, columns, rows) {
+      const capacity = columns * rows;
+      const used = countCells(tiles, columns);
+      const bottom = layoutTiles(tiles, columns, rows * 2).bottom;
+      return { used, capacity, fits: used <= capacity && bottom <= rows * 2, shape: used <= capacity && bottom > rows * 2 };
+    }
+
     // Bepaalt waar elke tegel staat. Tegels met een eigen positie krijgen die (zo nodig binnen de kolommen geschoven);
-    // overlapt die met een eerder geplaatste tegel, of heeft de tegel geen positie, dan komt hij op het eerste vrije
-    // vak, van links naar rechts en van boven naar beneden. Rijen zijn halve tegels.
-    function layoutTiles(tiles, columns) {
+    // overlapt die met een eerder geplaatste tegel, valt hij onder de laatste rij (maxRows, in halve tegels), of heeft
+    // de tegel geen positie, dan komt hij op het eerste vrije vak, van links naar rechts en van boven naar beneden.
+    function layoutTiles(tiles, columns, maxRows = Infinity) {
       const taken = new Set();
       const places = new Map();
       const fits = (col, row, size) => {
@@ -1982,7 +2007,8 @@
       for (const tile of tiles) {
         const size = tileSize(tile, columns);
         const col = tile.position ? clamp(tile.position.col, 1, columns - size.cols + 1) : 0;
-        if (col && fits(col, tile.position.row, size)) place(tile, col, tile.position.row, size);
+        const inside = tile.position && tile.position.row + size.rows - 1 <= maxRows;
+        if (col && inside && fits(col, tile.position.row, size)) place(tile, col, tile.position.row, size);
         else pending.push([tile, size]);
       }
       for (const [tile, size] of pending) {
@@ -2160,7 +2186,8 @@
       return el('section', { class: 'tile tile--calendar', 'aria-label': tile.title },
         buildTileHeading(tile),
         // tabindex: de lijst kan scrollen en moet dan ook met het toetsenbord te bereiken zijn.
-        el('div', { class: 'tile-body', tabindex: 0, 'aria-label': `${tile.title}: afspraken` }, buildCalendarContent(tile)));
+        el('div', { class: 'tile-body', tabindex: 0, 'aria-label': `${tile.title}: afspraken`, 'data-status': calendarStatusKey(tile) },
+          buildCalendarContent(tile)));
     }
 
     // Afspraken per dag, van vandaag tot daysAhead dagen vooruit.
@@ -2210,15 +2237,17 @@
           : endsToday ? `tot ${TIME_FORMAT.format(end)}` : 'Hele dag';
         past = end <= now && end > start;
         current = start <= now && now < end;
-        if (current && end - now < 12 * 3600_000) badge = `nog ${formatDuration(end - now)}`;
-        else if (isNext && start - now < 12 * 3600_000) badge = `over ${formatDuration(start - now)}`;
+        if (current && end - now < 12 * 3600_000) badge = { prefix: 'nog', until: end.getTime() };
+        else if (isNext && start - now < 12 * 3600_000) badge = { prefix: 'over', until: start.getTime() };
       }
       return el('li', { class: `agenda-item${past ? ' is-past' : ''}${current ? ' is-now' : ''}${badge && !current ? ' is-next' : ''}` },
         el('span', { class: 'agenda-time' }, time),
         el('span', { class: 'agenda-text' },
           el('span', { class: 'agenda-head' },
             el('span', { class: 'agenda-title' }, item.title),
-            badge ? el('span', { class: 'agenda-badge' }, badge) : null),
+            badge
+              ? el('span', { class: 'agenda-badge', 'data-prefix': badge.prefix, 'data-until': badge.until }, badgeText(badge.prefix, badge.until, now))
+              : null),
           item.location ? el('span', { class: 'agenda-location' }, item.location) : null));
     }
 
@@ -2271,8 +2300,56 @@
         if (!body) continue;
         const scrollTop = body.scrollTop;
         body.replaceChildren(...[buildCalendarContent(tile)].flat().filter(Boolean));
+        body.dataset.status = calendarStatusKey(tile);
         body.scrollTop = scrollTop;
       }
+    }
+
+    // Elke minuut: alleen opnieuw opbouwen als er iets verandert (een afspraak begint of eindigt, een nieuwe dag);
+    // anders alleen de labels "nog … min" en "over … min" bijwerken.
+    function tickCalendarTiles(now = new Date()) {
+      for (const tile of config.tiles) {
+        if (tile.type !== 'calendar') continue;
+        const body = $(`[data-tile-id="${CSS.escape(tile.id)}"] .tile-body`);
+        if (!body) continue;
+        if (body.dataset.status !== calendarStatusKey(tile, now)) {
+          renderCalendarTiles(tile.icsUrl);
+          continue;
+        }
+        for (const badge of body.querySelectorAll('.agenda-badge[data-until]')) {
+          badge.textContent = badgeText(badge.dataset.prefix, Number(badge.dataset.until), now);
+        }
+      }
+    }
+
+    function badgeText(prefix, until, now) {
+      return `${prefix} ${formatDuration(Math.abs(until - now))}`;
+    }
+
+    // Korte samenvatting van wat er vandaag voorbij, bezig en eerstvolgend is; verandert die, dan opnieuw tekenen.
+    function calendarStatusKey(tile, now = new Date()) {
+      const state = calendarState.get(tile.icsUrl);
+      if (!state?.occurrences) return '';
+      const today = localDayNumber(now);
+      const dayFrom = dayStart(today);
+      const dayTo = dayStart(today + 1);
+      const time = now.getTime();
+      const soon = 12 * 3600_000;
+      let key = `${today}:`;
+      let nextFound = false;
+      for (const item of state.occurrences) {
+        if (item.allDay) continue;
+        const start = Date.parse(item.start);
+        const end = Date.parse(item.end);
+        if (start >= dayTo || Math.max(end, start + 1) <= dayFrom) continue; // niet vandaag
+        if (end <= time && end > start) key += 'p';
+        else if (start <= time && time < end) key += end - time < soon ? 'N' : 'n';
+        else if (start > time && !nextFound && start >= dayFrom) {
+          nextFound = true;
+          key += start - time < soon ? 'X' : 'x';
+        } else key += 'f';
+      }
+      return key;
     }
 
     // De site achter een tegel: bij RSS de website van de feed, bij een gewone tegel het webadres.
@@ -2386,34 +2463,38 @@
           else tryNext();
         });
       };
-      let usingPreferred = Boolean(preferred);
+      // Eerst een adres dat al eens gelukt is, dan het logo uit de feed; daarna zoeken.
+      const known = safeUrl(knownFavicons()[site.host], ['https:']);
+      const firsts = [...new Set([known, preferred].filter(Boolean))];
+      let searched = false;
       const failed = () => {
-        if (usingPreferred) {
-          usingPreferred = false;
+        if (known && image.getAttribute('src') === known) rememberFavicon(site.host, null); // werkt niet meer
+        if (firsts.length) image.src = firsts.shift();
+        else if (searched) tryNext();
+        else {
+          searched = true;
           search();
-        } else {
-          tryNext();
         }
       };
       image.addEventListener('error', failed);
-      // Een (bijna) leeg plaatje telt als mislukt.
-      image.addEventListener('load', () => { if (image.naturalWidth < 8) failed(); });
-
-      if (usingPreferred) image.src = preferred;
-      else search();
+      image.addEventListener('load', () => {
+        if (image.naturalWidth < 8) failed(); // een (bijna) leeg plaatje telt als mislukt
+        else if (/^https:/.test(image.src) && image.src !== known) rememberFavicon(site.host, image.src);
+      });
+      failed();
       return image;
     }
 
-    // Favicon via de Worker, 7 dagen bewaard in IndexedDB (een site zonder favicon 1 dag).
-    // Resultaat: { url } (gevonden), { missing: true } (de site heeft er geen) of null (Worker niet bruikbaar).
+    // Favicon via de Worker. Eenmaal gevonden blijft het in IndexedDB bewaard; "geen favicon" wordt na 1 dag
+    // opnieuw gevraagd. Resultaat: { url } (gevonden), { missing: true } (geen favicon) of null (Worker niet bruikbaar).
     function workerFavicon(host) {
       if (!faviconRequests.has(host)) {
         faviconRequests.set(host, (async () => {
           const key = `favicon3:${host}`; // 3: uitkomsten van vóór Worker 1.2.0 (cookiemeldingen) niet meer gebruiken
           const cached = await idbGet('cache', key).catch(() => null);
-          const maxAge = cached?.blob ? FAVICON_MAX_AGE_MS : FAVICON_MISSING_MAX_AGE_MS;
-          const fromCache = () => (cached?.blob ? { url: objectUrl(cached.blob) } : null);
-          if (cached && Date.now() - cached.fetchedAt < maxAge) return cached.blob ? fromCache() : { missing: true };
+          const fromCache = () => (cached?.blob ? { url: URL.createObjectURL(cached.blob) } : null);
+          if (cached?.blob) return fromCache();
+          if (cached && Date.now() - cached.fetchedAt < FAVICON_MISSING_MAX_AGE_MS) return { missing: true };
           try {
             const response = await fetch(`${workerEndpoint(config.services, '/favicon')}?url=${encodeURIComponent(`https://${host}`)}`, {
               headers: { 'X-Dashboard-Key': config.services.workerKey },
@@ -2427,7 +2508,7 @@
             // Een oudere Worker zonder /favicon geeft 404: dan gewoon de bronnen in de browser gebruiken.
             if (!blob?.type.startsWith('image/')) return fromCache();
             idbPut('cache', key, { fetchedAt: Date.now(), blob }).catch(() => {});
-            return { url: objectUrl(blob) };
+            return { url: URL.createObjectURL(blob) };
           } catch {
             return fromCache();
           }
@@ -2436,21 +2517,21 @@
       return faviconRequests.get(host);
     }
 
-    function objectUrl(blob) {
-      const url = URL.createObjectURL(blob);
-      faviconUrls.push(url);
-      return url;
+    // Adressen van favicons die al eens gelukt zijn (zonder Worker, of het logo uit een feed): die eerst proberen.
+    function knownFavicons() {
+      try {
+        const map = JSON.parse(storageGet(STORAGE_KEYS.favicons) ?? '{}');
+        return isPlainObject(map) ? map : {};
+      } catch {
+        return {};
+      }
     }
 
-    // Een tabblad dat dagen openstaat, haalt de favicons af en toe opnieuw op (de cache bepaalt of dat echt nodig is).
-    function refreshFavicons() {
-      if (draft || $('#tileGrid').classList.contains('is-sorting')) return;
-      const old = faviconUrls;
-      faviconUrls = [];
-      faviconRequests.clear();
-      renderGrid();
-      renderQuickLinks();
-      setTimeout(() => old.forEach(url => URL.revokeObjectURL(url)), 10_000);
+    function rememberFavicon(host, url) {
+      const map = knownFavicons();
+      if (url) map[host] = url;
+      else delete map[host];
+      storageSet(STORAGE_KEYS.favicons, JSON.stringify(map));
     }
 
     // vechtdalwonen.operations.eu.dynamics.com → dynamics.com, www.bbc.co.uk → bbc.co.uk
@@ -2648,7 +2729,8 @@
 
     // Zet tegel `id` op `target`. Geeft false als er niets verandert.
     function moveTileTo(tiles, id, target, columns) {
-      const before = layoutTiles(tiles, columns).places;
+      const maxRows = config.appearance.gridRows * 2;
+      const before = layoutTiles(tiles, columns, maxRows).places;
       const from = before.get(id);
       if (!from || (from.col === target.col && from.row === target.row)) return false;
 
@@ -2677,7 +2759,7 @@
       }
 
       // De lijst in schermvolgorde houden: dan klopt de volgorde in Instellingen en bij Tab.
-      const after = layoutTiles(tiles, columns).places;
+      const after = layoutTiles(tiles, columns, maxRows).places;
       for (const tile of tiles) {
         const place = after.get(tile.id);
         tile.position = { col: place.col, row: place.row };
@@ -2829,7 +2911,6 @@
       $('.weather-temp', widget).textContent = temperature;
       $('.weather-place', widget).textContent = name;
       widget.classList.toggle('is-stale', stale);
-      widget.dataset.description = description; // voor schermlezers en tests; geen tooltip
       $('.weather-icon', widget).setAttribute('aria-label', description);
     }
 
@@ -2851,8 +2932,24 @@
       clearTimeout(timers.rss);
       const urls = [...new Set(config.tiles.filter(tile => tile.type === 'rss' && tile.feedUrl).map(tile => tile.feedUrl))];
       await Promise.all(urls.map(url => updateFeed(url, force)));
-      const failed = urls.some(url => feedState.get(url)?.error);
-      timers.rss = setTimeout(updateFeeds, failed ? 2 * 60_000 : RSS_REFRESH_MS);
+      timers.rss = setTimeout(updateFeeds, nextRefreshDelay(urls.map(url => feedState.get(url)), RSS_REFRESH_MS));
+    }
+
+    // Wachttijd tot de eerstvolgende bron aan de beurt is: een gelukte bron na `interval`, een mislukte op retryAt.
+    function nextRefreshDelay(states, interval) {
+      const now = Date.now();
+      const due = states.filter(Boolean).map(state => (state.error ? state.retryAt ?? now : state.fetchedAt + interval));
+      return clamp(Math.min(now + interval, ...due) - now, 30_000, interval);
+    }
+
+    // Foutstatus met oplopende wachttijd tot de volgende poging.
+    function failureState(state, error) {
+      const failures = (state?.failures ?? 0) + 1;
+      return {
+        error: error.message || 'onbekende fout.',
+        failures,
+        retryAt: Date.now() + RETRY_DELAYS_MS[Math.min(failures, RETRY_DELAYS_MS.length) - 1]
+      };
     }
 
     function updateFeed(url, force) {
@@ -2873,6 +2970,7 @@
       const state = feedState.get(url);
       if (!config.services.workerUrl) return;
       if (!force && state?.feed && !state.error && Date.now() - state.fetchedAt < RSS_REFRESH_MS) return;
+      if (!force && state?.error && Date.now() < state.retryAt) return;
 
       try {
         const feed = parseFeed(await proxyFetch('/rss', url), url);
@@ -2881,12 +2979,12 @@
         idbPut('cache', `rss:${url}`, { fetchedAt: next.fetchedAt, feed: next.feed }).catch(() => {});
       } catch (error) {
         // Bij een fout blijft de laatst bekende inhoud staan, met een melding.
-        feedState.set(url, { fetchedAt: state?.fetchedAt ?? 0, feed: state?.feed ?? null, error: error.message || 'onbekende fout.' });
+        feedState.set(url, { fetchedAt: state?.fetchedAt ?? 0, feed: state?.feed ?? null, ...failureState(state, error) });
       }
       renderFeedTiles(url);
     }
 
-    // Leest RSS 2.0, RSS 1.0 (RDF) en Atom. Alleen titel, link en datum worden gebruikt; nooit HTML uit de feed.
+    // Leest RSS 2.0, RSS 1.0 (RDF) en Atom: titel, link, logo en per bericht titel, link en datum; nooit HTML uit de feed.
     function parseFeed(xml, baseUrl) {
       if (/^\s*(<!doctype html|<html)/i.test(xml)) {
         throw new Error('dit adres geeft een webpagina, geen RSS- of Atom-feed. Zoek op de site naar de link van de feed.');
@@ -2966,8 +3064,7 @@
         }
         return calendarRequests.get(url);
       }));
-      const failed = urls.some(url => calendarState.get(url)?.error);
-      timers.calendar = setTimeout(updateCalendars, failed ? 2 * 60_000 : ICS_REFRESH_MS);
+      timers.calendar = setTimeout(updateCalendars, nextRefreshDelay(urls.map(url => calendarState.get(url)), ICS_REFRESH_MS));
     }
 
     async function refreshCalendar(url, force) {
@@ -2981,6 +3078,7 @@
       const state = calendarState.get(url);
       if (!config.services.workerUrl) return;
       if (!force && state?.occurrences && !state.error && Date.now() - state.fetchedAt < ICS_REFRESH_MS) return;
+      if (!force && state?.error && Date.now() < state.retryAt) return;
 
       try {
         const calendar = parseICS(await proxyFetch('/ics', url));
@@ -2994,7 +3092,7 @@
           fetchedAt: state?.fetchedAt ?? 0,
           name: state?.name ?? '',
           occurrences: state?.occurrences ?? null,
-          error: error.message || 'onbekende fout.'
+          ...failureState(state, error)
         });
       }
       renderCalendarTiles(url);
@@ -3518,13 +3616,15 @@
 
     function validateDraft(data) {
       const { gridColumns, gridRows } = data.appearance;
-      const capacity = gridColumns * gridRows;
-      const used = countCells(data.tiles, gridColumns);
-      if (used > capacity) {
+      const fit = gridFit(data.tiles, gridColumns, gridRows);
+      if (!fit.fits) {
         return {
           section: 'tiles',
-          message: `De tegels hebben ${formatNumber(used)} cellen nodig, maar het grid heeft er ${capacity}. ` +
-            'Maak het grid groter (Uiterlijk) of verwijder tegels.'
+          message: fit.shape
+            ? `De tegels passen niet in het grid van ${gridColumns} × ${gridRows}: door hun maten blijven er vakken over ` +
+              'die geen tegel kan gebruiken. Verander de volgorde, sleep tegels, of maak het grid groter (Uiterlijk).'
+            : `De tegels hebben ${formatNumber(fit.used)} cellen nodig, maar het grid heeft er ${fit.capacity}. ` +
+              'Maak het grid groter (Uiterlijk) of verwijder tegels.'
         };
       }
       for (const tile of data.tiles) {
@@ -3640,7 +3740,7 @@
       const meta = TILE_TYPES[type];
       const defaults = { ...structuredClone(TILE_DEFAULTS[type]), ...(half ? { size: 'half' } : {}) };
       const { gridColumns, gridRows } = draft.appearance;
-      if (countCells(draft.tiles, gridColumns) + tileCells({ type, ...defaults }, gridColumns) > gridColumns * gridRows) {
+      if (!gridFit([...draft.tiles, { id: 'nieuw', type, ...defaults }], gridColumns, gridRows).fits) {
         toast(`Er is geen ruimte meer voor een ${meta.label.toLowerCase()}. ` +
           'Maak het grid groter via Uiterlijk, of verwijder een tegel.');
         return;
@@ -3840,11 +3940,11 @@
       }
 
       const { gridColumns, gridRows } = draft.appearance;
-      const capacity = gridColumns * gridRows;
-      const used = countCells(draft.tiles, gridColumns);
+      const { used, capacity, fits, shape } = gridFit(draft.tiles, gridColumns, gridRows);
       return [
-        el('p', { class: `capacity${used > capacity ? ' is-over' : ''}` },
+        el('p', { class: `capacity${fits ? '' : ' is-over'}` },
           `${formatNumber(used)} van ${capacity} cellen gebruikt (grid ${gridColumns} × ${gridRows}). ` +
+          (shape ? 'Door de maten van de tegels passen ze zo niet: er blijven vakken over. ' : '') +
           'Tip: sleep tegels op het dashboard naar elke gewenste plek, ook naar een leeg vak.'),
         draft.tiles.length
           ? el('ul', { class: 'settings-list' }, draft.tiles.map((tile, index) => el('li', { class: 'settings-list-item' },
@@ -4341,9 +4441,8 @@
       updateWeather();
       updateFeeds();
       updateCalendars();
-      // Elke minuut de agenda opnieuw tekenen: afgelopen afspraken vervagen, "nu" schuift mee, om middernacht een nieuwe dag.
-      setInterval(() => renderCalendarTiles(), 60_000);
-      setInterval(refreshFavicons, FAVICON_REFRESH_MS);
+      // Elke minuut de agenda bijwerken: afgelopen afspraken vervagen, "nu" schuift mee, om middernacht een nieuwe dag.
+      setInterval(() => tickCalendarTiles(), 60_000);
       requestPersistentStorage();
     }
 

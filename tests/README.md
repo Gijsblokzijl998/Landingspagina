@@ -40,6 +40,7 @@ Eén suite apart draaien: `node tests/09-agenda.mjs`. Schermafbeeldingen komen i
 | `12-indeling-favicons` | brede RSS-tegel, compacte links en agenda, grid tot 8 × 8, favicons via de Worker |
 | `13-favicon-achtergrond` | favicon als tegelicoon, accentkleur voor datum en tijd, agendagrootte, tegelachtergrond |
 | `14-halve-tegel-iconen` | halve tegels, zakelijke iconen en zoeken, tijdkolom van de agenda |
+| `16-robuustheid` | opslag met alleen IndexedDB, capaciteit volgens de echte indeling, oplopende wachttijd bij fouten, zuinig bijwerken van de agenda, favicon-cache |
 | `15-verfijning` | laden en fouten met knoppen, nu/straks in de agenda, tegelgrootte en -vorm, verloop, glas, inlaadanimatie, instellingen, twee tabbladen |
 
 De browsercontexten draaien met "minder animaties", zodat metingen niet midden in een animatie vallen. Suite 15
