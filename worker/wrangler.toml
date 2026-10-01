@@ -1,0 +1,17 @@
+# Cloudflare Worker voor het Landingspagina-dashboard (proxy voor RSS en agenda).
+# Deployen: zie README.md in deze map.
+name = "landingspagina"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+# Geen logboeken bewaren: verzoeken bevatten je geheime agenda-adres.
+[observability]
+enabled = false
+
+[vars]
+# Extra hosts waarvan agenda's (ICS) opgehaald mogen worden, kommagescheiden.
+# calendar.google.com, outlook.office365.com en outlook.live.com zijn altijd toegestaan.
+EXTRA_ICS_HOSTS = ""
+
+# Het secret DASHBOARD_KEY staat hier bewust niet in. Stel het in met:
+#   npx wrangler secret put DASHBOARD_KEY

@@ -420,7 +420,7 @@ Elke fase levert een werkend `index.html` op en wordt apart gecommit. Grootte: S
 | **3** | Tegels & navigatie | `link` (url / path / session-file), pad kopiëren, Office-URI-onderzoek, `links`-tegel, quick links-balk, grid-capaciteit | alle doeltypen werken in Edge zoals in §6; toetsenbordbediening werkt ✅ (Office-URI nog te testen op Windows) | M |
 | **4** | Instellingenmodal | zijbalk + alle categorieën uit §3.4, tegel-editor (toevoegen/bewerken/verwijderen/volgorde), validatie, opslaan/annuleren | alles uit `DEFAULT_CONFIG` is via de UI aan te passen zonder code te wijzigen ✅ (plaats zoeken volgt in fase 5) | L |
 | **5** | Weer | `fetchWeather`, `geocode` in de instellingen, `WMO_CODES`, cache | plaats zoeken → kiezen → weer in de header; offline toont de laatste waarde ✅ | S |
-| **6** | Cloudflare Worker | `worker/` met `/rss`, `/ics` en `/ping`, sleutel, allowlist, CORS, README; "Verbinding testen" in de instellingen | Worker gedeployed; testknop groen; verzoek zonder sleutel → 401 | S |
+| **6** | Cloudflare Worker | `worker/` met `/rss`, `/ics` en `/ping`, sleutel, allowlist, CORS, README; "Verbinding testen" in de instellingen | Worker gedeployed; testknop groen; verzoek zonder sleutel → 401 ✅ (code en tests klaar; deployen doe jij) | S |
 | **7** | RSS-tegel | `fetchAndRenderRSS`, `parseFeed` (RSS 2.0 / Atom / RDF), verversen, foutstatus | drie verschillende echte feeds tonen correct; foute URL geeft nette melding | M |
 | **8** | Agenda-tegel (2x2) | `parseICS`, `expandEvents`, weergave per dag | jouw Google-agenda klopt 30 dagen vooruit, inclusief herhalingen, uitzonderingen, hele-dag-afspraken en zomer-/wintertijd | L |
 | **9** | Afwerking | toegankelijkheid, foutstatussen, lege staten, CSP, Playwright-smoketests, README | checklist §9 afgevinkt; dashboard draait als Edge-startpagina | M |
@@ -476,5 +476,8 @@ Worker en kan eventueel naar voren.
 4. ~~**Fase 4**: instellingenmodal~~ ✅ (alle categorieën, tegel-editor, live voorbeeld, validatie, opslaan/annuleren).
 5. ~~**Fase 5**: weer~~ ✅ (Open-Meteo, plaats zoeken, cache van 30 minuten, verouderde waarde bij storing).
    Daarnaast: alle links in een nieuw tabblad, titel en welkomsttekst op één regel, favicons bij links.
-6. **Fase 6**: Cloudflare Worker (RSS- en ICS-proxy) met deploy-instructies.
-7. Na elke fase samen kijken en waar nodig het plan bijstellen. Dit document wordt bijgewerkt als keuzes veranderen.
+6. ~~**Fase 6**: Cloudflare Worker~~ ✅ (`worker/` met `/ping`, `/rss` en `/ics`, sleutel, allowlist, cache,
+   limieten; "Verbinding testen" in Koppelingen; instructies in `worker/README.md`).
+   Daarnaast: rustiger ontwerp met grijze kop- en voetbalk, lijniconen (kiesbaar per tegel) en favicons met terugval.
+7. **Fase 7**: RSS-tegel.
+8. Na elke fase samen kijken en waar nodig het plan bijstellen. Dit document wordt bijgewerkt als keuzes veranderen.

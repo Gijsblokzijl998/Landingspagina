@@ -31,6 +31,7 @@
       --accent-text: color-mix(in srgb, var(--accent) 85%, black);
       --accent-soft: color-mix(in srgb, var(--accent) 12%, transparent);
       --danger: #c62828;
+      --success: #2e7d32;
       --shadow: 0 1px 2px rgb(16 24 40 / .05), 0 2px 8px rgb(16 24 40 / .06);
       --shadow-hover: 0 4px 10px rgb(16 24 40 / .08), 0 14px 28px rgb(16 24 40 / .10);
       --backdrop: rgb(15 18 25 / .45);
@@ -54,6 +55,7 @@
       --accent-text: color-mix(in srgb, var(--accent) 55%, white);
       --accent-soft: color-mix(in srgb, var(--accent) 22%, transparent);
       --danger: #f87171;
+      --success: #6fcf86;
       --shadow: 0 1px 2px rgb(0 0 0 / .35), 0 2px 8px rgb(0 0 0 / .25);
       --shadow-hover: 0 6px 14px rgb(0 0 0 / .4), 0 16px 32px rgb(0 0 0 / .35);
       --backdrop: rgb(0 0 0 / .6);
@@ -684,6 +686,10 @@
     .icon-choice[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-text); }
     .icon-choice--none { font-size: .7rem; }
     .item-icon .icon { width: 18px; height: 18px; vertical-align: middle; }
+
+    .status { font-size: .85rem; color: var(--text-muted); }
+    .status[data-state="ok"] { color: var(--success); }
+    .status[data-state="error"] { color: var(--danger); }
 
     .place-search { display: grid; gap: 8px; }
     .place-results { display: grid; gap: 4px; }
@@ -1739,6 +1745,11 @@
     /* ======================================================================
        Databronnen
        ====================================================================== */
+    // Adres van een Worker-route; werkt ook als het Worker-adres op een / eindigt.
+    function workerEndpoint(services, path) {
+      return `${services.workerUrl.trim().replace(/\/+$/, '')}${path}`;
+    }
+
     function weatherKey(settings = config.weather) {
       const { latitude, longitude } = settings.location;
       return `${latitude},${longitude},${settings.unit}`;
@@ -1900,6 +1911,7 @@
         applyAppearance(draft.appearance);
         rerenderSettings();
       },
+      'test-worker': testWorkerConnection,
       'set-tile-icon': button => {
         setPath(draft, button.dataset.path, button.dataset.icon);
         rerenderSettings();
@@ -2420,14 +2432,44 @@
     function renderServiceSettings() {
       return [
         buildSettingsGroup('Cloudflare Worker',
-          'De Worker haalt RSS-feeds en je agenda op. Het aanmaken van de Worker en de knop "Verbinding testen" volgen in fase 6.',
+          'De Worker haalt RSS-feeds en je agenda op. Hoe je hem in je Cloudflare-account zet, staat in ' +
+          'worker/README.md in het project.',
           field('Worker-adres', inputFor('services.workerUrl', {
             type: 'url',
-            placeholder: 'https://landingspagina.<account>.workers.dev'
+            placeholder: 'https://landingspagina.<jouw-subdomein>.workers.dev'
           })),
           field('Sleutel', inputFor('services.workerKey', { type: 'password', autocomplete: 'off' }),
-            'Dezelfde waarde als het secret DASHBOARD_KEY van de Worker.'))
+            'Dezelfde waarde als het secret DASHBOARD_KEY van de Worker.'),
+          el('div', { class: 'inline' },
+            el('button', { class: 'btn', type: 'button', 'data-action': 'test-worker' }, 'Verbinding testen'),
+            el('p', { id: 'workerStatus', class: 'status', role: 'status' })))
       ];
+    }
+
+    // Test met de waarden uit het formulier, dus ook vóór het opslaan.
+    async function testWorkerConnection() {
+      const status = $('#workerStatus');
+      const show = (message, state = '') => {
+        status.textContent = message;
+        status.dataset.state = state;
+      };
+      if (!safeUrl(draft.services.workerUrl, ['https:'])) {
+        show('Vul eerst een Worker-adres in dat met https:// begint.', 'error');
+        return;
+      }
+      show('Verbinding testen…');
+      try {
+        const response = await fetch(workerEndpoint(draft.services, '/ping'), {
+          headers: { 'X-Dashboard-Key': draft.services.workerKey },
+          signal: AbortSignal.timeout(10_000)
+        });
+        const data = await response.json().catch(() => ({}));
+        if (response.ok && data.ok) show(`Verbinding gelukt (Worker-versie ${data.version}).`, 'ok');
+        else if (response.status === 401) show('De Worker is bereikbaar, maar de sleutel klopt niet.', 'error');
+        else show(data.error ?? `De Worker gaf status ${response.status}.`, 'error');
+      } catch {
+        show('De Worker is niet bereikbaar. Controleer het adres en je internetverbinding.', 'error');
+      }
     }
 
     function renderDataSettings() {
