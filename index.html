@@ -498,6 +498,30 @@
       text-align: center;
     }
 
+    .tile-state.is-error { color: var(--danger); }
+
+    .feed-list { display: grid; margin: 0 -6px; padding: 0; list-style: none; }
+    .feed-item {
+      display: grid;
+      gap: 1px;
+      padding: 5px 6px;
+      border-radius: 8px;
+      text-decoration: none;
+    }
+    a.feed-item:hover { background: var(--surface-hover); }
+    a.feed-item:hover .feed-title { color: var(--text); }
+    .feed-title {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      overflow: hidden;
+      color: color-mix(in srgb, var(--text) 85%, var(--text-muted));
+      font-size: .8rem;
+      line-height: 1.3;
+    }
+    .feed-meta { color: var(--text-muted); font-size: .7rem; }
+    .feed-stale { margin-top: 6px; color: var(--text-muted); font-size: .7rem; font-style: italic; }
+
     .tile--calendar { grid-column: span 2; grid-row: span 2; }
 
     /* ======================================================================
@@ -902,6 +926,8 @@
       host => `https://${host}/favicon.ico`
     ];
     const WEATHER_REFRESH_MS = 30 * 60_000;
+    const RSS_REFRESH_MS = 15 * 60_000;
+    const RSS_CACHE_ITEMS = 30;       // zoveel berichten per feed bewaren in de cache
 
     // WMO-weercode (Open-Meteo) → [icoon overdag, icoon 's nachts, omschrijving]
     const WMO_CODES = {
@@ -1166,6 +1192,9 @@
     const TIME_FORMAT = new Intl.DateTimeFormat('nl-NL', { hour: '2-digit', minute: '2-digit' });
     const TIME_FORMAT_SECONDS = new Intl.DateTimeFormat('nl-NL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const DATE_FORMAT = new Intl.DateTimeFormat('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
+    const SHORT_DATE_FORMAT = new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'short' });
+    const FULL_DATE_TIME_FORMAT = new Intl.DateTimeFormat('nl-NL', { dateStyle: 'full', timeStyle: 'short' });
+    const RELATIVE_TIME_FORMAT = new Intl.RelativeTimeFormat('nl', { numeric: 'auto' });
 
     /* ======================================================================
        State
@@ -1179,6 +1208,8 @@
     let weather = null;               // { key, fetchedAt, data, failed }
     let weatherRun = 0;               // voorkomt dat een oude weer-update een nieuwere overschrijft
     let placeSearchRun = 0;
+    const feedState = new Map();      // feed-URL → { fetchedAt, feed: { title, items }, error }
+    const feedRequests = new Map();   // feed-URL → lopende ophaalactie, zodat een feed niet dubbel wordt opgehaald
     let activeSettingsSection = SETTINGS_SECTIONS[0].id;
     const timers = {};
     const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -1259,6 +1290,7 @@
       renderDashboard();
       startClock();
       updateWeather();
+      updateFeeds();
     }
 
     function initDB() {
@@ -1584,7 +1616,47 @@
     function buildRssTile(tile) {
       return el('section', { class: 'tile tile--rss', 'aria-label': tile.title },
         buildTileHeading(tile),
-        el('div', { class: 'tile-body' }, buildTileState(dataTileMessage(tile))));
+        el('div', { class: 'tile-body' }, buildFeedContent(tile)));
+    }
+
+    // Inhoud van een RSS-tegel uit feedState; wordt opnieuw opgebouwd zodra een feed is opgehaald.
+    function buildFeedContent(tile) {
+      if (!tile.feedUrl) return buildTileState('Voeg een feed-adres toe via ⚙ Instellingen → Tegels.');
+      if (!config.services.workerUrl) return buildTileState('Koppel eerst de Worker via ⚙ Instellingen → Koppelingen.');
+
+      const state = feedState.get(tile.feedUrl);
+      if (!state?.feed) {
+        return state?.error
+          ? buildTileState(`De feed kon niet worden geladen: ${state.error}`, true)
+          : buildTileState('Laden…');
+      }
+
+      const items = state.feed.items.slice(0, tile.maxItems);
+      if (!items.length) return buildTileState('Deze feed bevat geen berichten.');
+      return [
+        el('ul', { class: 'feed-list' }, items.map(item => {
+          const href = safeUrl(item.link, ['http:', 'https:']);
+          const date = item.date ? new Date(item.date) : null;
+          const content = [
+            el('span', { class: 'feed-title' }, item.title || item.link),
+            date ? el('time', { class: 'feed-meta', datetime: date.toISOString(), title: FULL_DATE_TIME_FORMAT.format(date) }, relativeTime(date)) : null
+          ];
+          return el('li', {}, href
+            ? el('a', { class: 'feed-item', ...linkAttributes(href) }, content)
+            : el('span', { class: 'feed-item' }, content));
+        })),
+        state.error
+          ? el('p', { class: 'feed-stale', title: state.error },
+              `Bijwerken mislukt; dit is de stand van ${TIME_FORMAT.format(new Date(state.fetchedAt))}.`)
+          : null
+      ];
+    }
+
+    function renderFeedTiles(feedUrl) {
+      for (const tile of config.tiles) {
+        if (tile.type !== 'rss' || tile.feedUrl !== feedUrl) continue;
+        $(`[data-tile-id="${CSS.escape(tile.id)}"] .tile-body`)?.replaceChildren(...[buildFeedContent(tile)].flat());
+      }
     }
 
     function buildCalendarTile(tile) {
@@ -1594,12 +1666,9 @@
     }
 
     function dataTileMessage(tile) {
-      if (tile.type === 'calendar' && !tile.icsUrl) {
-        return 'Voeg het iCal-adres van je Google Agenda toe via ⚙ Instellingen → Tegels.';
-      }
-      if (tile.type === 'rss' && !tile.feedUrl) return 'Voeg een feed-adres toe via ⚙ Instellingen → Tegels.';
+      if (!tile.icsUrl) return 'Voeg het iCal-adres van je Google Agenda toe via ⚙ Instellingen → Tegels.';
       if (!config.services.workerUrl) return 'Koppel eerst de Worker via ⚙ Instellingen → Koppelingen.';
-      return tile.type === 'rss' ? 'De feed wordt vanaf fase 7 opgehaald.' : 'De agenda wordt vanaf fase 8 opgehaald.';
+      return 'De agenda wordt vanaf fase 8 opgehaald.';
     }
 
     function buildTileHeading(tile) {
@@ -1616,8 +1685,8 @@
       return null;
     }
 
-    function buildTileState(message) {
-      return el('p', { class: 'tile-state' }, message);
+    function buildTileState(message, isError = false) {
+      return el('p', { class: isError ? 'tile-state is-error' : 'tile-state' }, message);
     }
 
     // Links openen altijd in een nieuw tabblad. Office- en mailto-links starten een programma en krijgen geen (leeg) tabblad.
@@ -1694,6 +1763,7 @@
         if (document.hidden) return;
         startClock();
         updateWeather();
+        updateFeeds();
       });
 
       // Wijzigingen uit een ander tabblad met het dashboard overnemen, zodat een oud tabblad ze niet overschrijft.
@@ -1706,6 +1776,7 @@
           renderDashboard();
           startClock();
           updateWeather();
+          updateFeeds();
         } catch {
           // Onleesbare waarde: negeren, de eigen config blijft gelden.
         }
@@ -1884,6 +1955,121 @@
         `Bijgewerkt om ${TIME_FORMAT.format(new Date(weather.fetchedAt))}${stale ? ' (verouderd)' : ''}`
       ].filter(Boolean).join('\n');
       widget.setAttribute('aria-label', `Weer in ${name}: ${temperature}, ${description.toLowerCase()}. Plaats wijzigen`);
+    }
+
+    // Haalt een bestand op via de Worker; gooit een fout met de (Nederlandse) uitleg van de Worker.
+    async function proxyFetch(route, url) {
+      const response = await fetch(`${workerEndpoint(config.services, route)}?url=${encodeURIComponent(url)}`, {
+        headers: { 'X-Dashboard-Key': config.services.workerKey },
+        signal: AbortSignal.timeout(20_000)
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error ?? `de Worker gaf status ${response.status}.`);
+      }
+      return response.text();
+    }
+
+    // Ververst alle RSS-tegels: eerst de cache tonen, dan ophalen als de data ouder is dan 15 minuten.
+    async function updateFeeds({ force = false } = {}) {
+      clearTimeout(timers.rss);
+      const urls = [...new Set(config.tiles.filter(tile => tile.type === 'rss' && tile.feedUrl).map(tile => tile.feedUrl))];
+      await Promise.all(urls.map(url => updateFeed(url, force)));
+      const failed = urls.some(url => feedState.get(url)?.error);
+      timers.rss = setTimeout(updateFeeds, failed ? 2 * 60_000 : RSS_REFRESH_MS);
+    }
+
+    function updateFeed(url, force) {
+      if (!feedRequests.has(url)) {
+        feedRequests.set(url, refreshFeed(url, force).finally(() => feedRequests.delete(url)));
+      }
+      return feedRequests.get(url);
+    }
+
+    async function refreshFeed(url, force) {
+      if (!feedState.has(url)) {
+        const cached = await idbGet('cache', `rss:${url}`).catch(() => null);
+        if (cached?.feed) {
+          feedState.set(url, { ...cached, error: null });
+          renderFeedTiles(url);
+        }
+      }
+      const state = feedState.get(url);
+      if (!config.services.workerUrl) return;
+      if (!force && state?.feed && !state.error && Date.now() - state.fetchedAt < RSS_REFRESH_MS) return;
+
+      try {
+        const feed = parseFeed(await proxyFetch('/rss', url), url);
+        const next = { fetchedAt: Date.now(), feed: { ...feed, items: feed.items.slice(0, RSS_CACHE_ITEMS) }, error: null };
+        feedState.set(url, next);
+        idbPut('cache', `rss:${url}`, { fetchedAt: next.fetchedAt, feed: next.feed }).catch(() => {});
+      } catch (error) {
+        // Bij een fout blijft de laatst bekende inhoud staan, met een melding.
+        feedState.set(url, { fetchedAt: state?.fetchedAt ?? 0, feed: state?.feed ?? null, error: error.message || 'onbekende fout.' });
+      }
+      renderFeedTiles(url);
+    }
+
+    // Leest RSS 2.0, RSS 1.0 (RDF) en Atom. Alleen titel, link en datum worden gebruikt; nooit HTML uit de feed.
+    function parseFeed(xml, baseUrl) {
+      if (/^\s*(<!doctype html|<html)/i.test(xml)) {
+        throw new Error('dit adres geeft een webpagina, geen RSS- of Atom-feed. Zoek op de site naar de link van de feed.');
+      }
+      const doc = new DOMParser().parseFromString(xml, 'application/xml');
+      if (doc.querySelector('parsererror')) throw new Error('dit is geen geldige RSS- of Atom-feed.');
+      const root = doc.documentElement;
+      const isAtom = root.localName === 'feed';
+      if (!isAtom && root.localName !== 'rss' && root.localName !== 'RDF') {
+        throw new Error('dit is geen RSS- of Atom-feed.');
+      }
+
+      const child = (node, name) => [...node.children].find(element => element.localName === name);
+      const text = (node, ...names) => {
+        for (const name of names) {
+          const value = [...node.children].find(element => element.localName === name && element.textContent.trim())?.textContent.trim();
+          if (value) return value;
+        }
+        return '';
+      };
+      const channel = isAtom ? root : child(root, 'channel') ?? root;
+      const entries = [...root.getElementsByTagNameNS('*', isAtom ? 'entry' : 'item')];
+
+      return {
+        title: htmlToText(text(channel, 'title')),
+        items: entries.map(entry => {
+          let link = '';
+          if (isAtom) {
+            const links = [...entry.children].filter(element => element.localName === 'link');
+            const alternate = links.find(element => (element.getAttribute('rel') ?? 'alternate') === 'alternate') ?? links[0];
+            link = alternate?.getAttribute('href') ?? '';
+          } else {
+            link = text(entry, 'link');
+            const guid = child(entry, 'guid');
+            if (!link && guid && guid.getAttribute('isPermaLink') !== 'false') link = guid.textContent.trim();
+          }
+          const dateText = text(entry, 'pubDate', 'published', 'updated', 'date');
+          const time = Date.parse(dateText);
+          return {
+            title: htmlToText(text(entry, 'title')),
+            link: link ? resolveUrl(link, baseUrl) : '',
+            date: Number.isNaN(time) ? null : new Date(time).toISOString()
+          };
+        }).filter(item => item.title || item.link)
+      };
+    }
+
+    // Titels kunnen HTML of entiteiten bevatten (Atom type="html"); DOMParser voert daarbij niets uit.
+    function htmlToText(value) {
+      if (!/[<&]/.test(value)) return value;
+      return new DOMParser().parseFromString(value, 'text/html').body.textContent.trim();
+    }
+
+    function resolveUrl(value, baseUrl) {
+      try {
+        return new URL(value, baseUrl).href;
+      } catch {
+        return '';
+      }
     }
 
     async function geocode(query) {
@@ -2673,6 +2859,18 @@
       return /^#[0-9a-f]{6}$/i.test(value);
     }
 
+    // "zojuist", "12 minuten geleden", "3 uur geleden", "gisteren", daarna een datum.
+    function relativeTime(date, now = new Date()) {
+      const minutes = Math.round((now - date) / 60_000);
+      if (minutes < 1) return 'zojuist';
+      if (minutes < 60) return RELATIVE_TIME_FORMAT.format(-minutes, 'minute');
+      const hours = Math.round(minutes / 60);
+      if (hours < 24) return RELATIVE_TIME_FORMAT.format(-hours, 'hour');
+      const days = Math.round(hours / 24);
+      if (days < 7) return RELATIVE_TIME_FORMAT.format(-days, 'day');
+      return SHORT_DATE_FORMAT.format(date);
+    }
+
     function debounce(callback, delay) {
       let timer;
       return (...args) => {
@@ -2737,6 +2935,7 @@
       startClock();
       await syncBackup(status);
       updateWeather();
+      updateFeeds();
       requestPersistentStorage();
     }
 

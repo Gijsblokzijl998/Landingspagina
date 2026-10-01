@@ -421,7 +421,7 @@ Elke fase levert een werkend `index.html` op en wordt apart gecommit. Grootte: S
 | **4** | Instellingenmodal | zijbalk + alle categorieën uit §3.4, tegel-editor (toevoegen/bewerken/verwijderen/volgorde), validatie, opslaan/annuleren | alles uit `DEFAULT_CONFIG` is via de UI aan te passen zonder code te wijzigen ✅ (plaats zoeken volgt in fase 5) | L |
 | **5** | Weer | `fetchWeather`, `geocode` in de instellingen, `WMO_CODES`, cache | plaats zoeken → kiezen → weer in de header; offline toont de laatste waarde ✅ | S |
 | **6** | Cloudflare Worker | `worker/` met `/rss`, `/ics` en `/ping`, sleutel, allowlist, CORS, README; "Verbinding testen" in de instellingen | Worker gedeployed; testknop groen; verzoek zonder sleutel → 401 ✅ (code en tests klaar; deployen doe jij) | S |
-| **7** | RSS-tegel | `fetchAndRenderRSS`, `parseFeed` (RSS 2.0 / Atom / RDF), verversen, foutstatus | drie verschillende echte feeds tonen correct; foute URL geeft nette melding | M |
+| **7** | RSS-tegel | `fetchAndRenderRSS`, `parseFeed` (RSS 2.0 / Atom / RDF), verversen, foutstatus | drie verschillende echte feeds tonen correct; foute URL geeft nette melding ✅ (getest met NOS, The Verge en RDF) | M |
 | **8** | Agenda-tegel (2x2) | `parseICS`, `expandEvents`, weergave per dag | jouw Google-agenda klopt 30 dagen vooruit, inclusief herhalingen, uitzonderingen, hele-dag-afspraken en zomer-/wintertijd | L |
 | **9** | Afwerking | toegankelijkheid, foutstatussen, lege staten, CSP, Playwright-smoketests, README | checklist §9 afgevinkt; dashboard draait als Edge-startpagina | M |
 
@@ -479,5 +479,8 @@ Worker en kan eventueel naar voren.
 6. ~~**Fase 6**: Cloudflare Worker~~ ✅ (`worker/` met `/ping`, `/rss` en `/ics`, sleutel, allowlist, cache,
    limieten; "Verbinding testen" in Koppelingen; instructies in `worker/README.md`).
    Daarnaast: rustiger ontwerp met grijze kop- en voetbalk, lijniconen (kiesbaar per tegel) en favicons met terugval.
-7. **Fase 7**: RSS-tegel.
-8. Na elke fase samen kijken en waar nodig het plan bijstellen. Dit document wordt bijgewerkt als keuzes veranderen.
+7. ~~**Fase 7**: RSS-tegel~~ ✅ (RSS 2.0, Atom en RDF via de Worker; cache van 15 minuten; laatste stand blijft bij
+   een storing; duidelijke foutmeldingen per tegel). Daarnaast: kopbalk met titel links en welkomsttekst in het
+   midden, en 87 tegeliconen.
+8. **Fase 8**: agenda-tegel (Google Agenda via ICS).
+9. Na elke fase samen kijken en waar nodig het plan bijstellen. Dit document wordt bijgewerkt als keuzes veranderen.

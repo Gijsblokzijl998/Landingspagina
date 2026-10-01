@@ -7,7 +7,7 @@ Ontwerp, keuzes en fasering staan in [PROJECTPLAN.md](PROJECTPLAN.md).
 
 ## Status
 
-**Fase 1 t/m 6 zijn klaar.** Alles stel je in via ⚙ Instellingen:
+**Fase 1 t/m 7 zijn klaar.** Alles stel je in via ⚙ Instellingen:
 - **Tegels** toevoegen, bewerken, ordenen en verwijderen. Een gewone tegel opent:
   - een **website**;
   - een **lokaal bestand of map**: plak het pad, bijvoorbeeld via rechtsklik → *Als pad kopiëren* in Verkenner;
@@ -28,7 +28,10 @@ zelf, met de eerste letter als terugval; uitzetten kan bij Uiterlijk.
 - **Koppelingen**: het adres en de sleutel van je Cloudflare Worker, met de knop *Verbinding testen*. Hoe je
   de Worker aanmaakt, staat in [worker/README.md](worker/README.md).
 
-RSS en de agenda volgen in de volgende fases. Ze gebruiken die Worker.
+- **RSS-tegels** tonen de nieuwste berichten van een RSS- of Atom-feed, opgehaald via die Worker en elke
+  15 minuten ververst.
+
+De agenda volgt in de volgende fase.
 
 **Office-bestanden:** een tegel naar een .docx, .xlsx of .pptx probeert het bestand direct in Word, Excel of
 PowerPoint te openen. Edge vraagt daarvoor eerst toestemming. Werkt dat niet, zet dan bij die tegel "Openen in
