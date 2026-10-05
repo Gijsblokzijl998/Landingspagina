@@ -7,7 +7,7 @@
     Beveiligingsregel (CSP): alleen de twee ingebouwde scripts (vastgelegd met hun SHA-256), Open-Meteo, de Worker
     op workers.dev en afbeeldingen via https/data/blob/file. Na het wijzigen van een script: node tests/check-csp.mjs --fix
   -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-0rmtLU0ARXSsrvNsuB+4/Bmhz0qNOt8iOlmRWEBipkk=' 'sha256-Qon8Is53AV03c/Z4nF3ayg1L4GY6QCiC9T2gcKxCORc='; style-src 'unsafe-inline'; img-src https: data: blob: file:; connect-src https://api.open-meteo.com https://geocoding-api.open-meteo.com https://*.workers.dev; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-0rmtLU0ARXSsrvNsuB+4/Bmhz0qNOt8iOlmRWEBipkk=' 'sha256-CJnWFFWx8Rl8WztRx40nQx0o0jP7f8pvwvCA6cBJCv4='; style-src 'unsafe-inline'; img-src https: data: blob: file:; connect-src https://api.open-meteo.com https://geocoding-api.open-meteo.com https://*.workers.dev; base-uri 'none'; form-action 'none'; object-src 'none'">
   <title>Mijn Dashboard</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='2' width='12' height='12' rx='3' fill='%232563eb'/%3E%3Crect x='18' y='2' width='12' height='12' rx='3' fill='%2360a5fa'/%3E%3Crect x='2' y='18' width='12' height='12' rx='3' fill='%2360a5fa'/%3E%3Crect x='18' y='18' width='12' height='12' rx='3' fill='%232563eb'/%3E%3C/svg%3E">
   <script>
@@ -46,7 +46,6 @@
       --gap: 16px;
       --fs: 16px;          /* basis voor tekst in tegels; groeit mee met grotere tegels */
       --page-pad: clamp(16px, 4vw, 40px);
-      --chrome-h: 140px; /* kopbalk + voetbalk + marges; wordt gemeten (measureChrome) */
       --font: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
       color-scheme: light;
     }
@@ -308,22 +307,18 @@
       container: main / inline-size;
       display: flex;
       flex-direction: column;
-      align-items: center;
+      /* Gecentreerd als het grid past; is het breder dan het venster, dan scrolt het opzij (niets valt weg). */
+      align-items: safe center;
+      overflow-x: auto;
       padding: 20px var(--page-pad) 24px;
     }
 
     .grid {
       --cols: var(--cfg-cols, 4);
-      --rows: var(--cfg-rows, 4);
       --ratio: var(--cfg-ratio, 1);               /* breedte : hoogte van een tegel */
-      --tile-max: var(--cfg-tile-max, 210px);     /* Tegelgrootte in Uiterlijk */
-      /* Tegelhoogte: zo groot als de breedte en de vensterhoogte toelaten voor het héle grid (kolommen × rijen). */
-      /* De breedte wint altijd (nooit horizontaal scrollen); alleen de hoogte heeft een minimum van 80 px, zodat
-         tegels in een laag venster bruikbaar blijven (de pagina scrolt dan verticaal). */
-      --tile: min(
-        (100cqi - (var(--cols) - 1) * var(--gap)) / var(--cols) / var(--ratio),
-        max(80px, (100dvh - var(--chrome-h) - (var(--rows) - 1) * var(--gap)) / var(--rows)),
-        var(--tile-max));
+      /* Vaste tegelmaat (Tegelgrootte in Uiterlijk). Meer kolommen of rijen maken het grid groter, niet de tegels
+         kleiner; past het grid niet in het venster, dan scrolt de pagina. */
+      --tile: var(--cfg-tile-size, 210px);
       --tile-w: calc(var(--tile) * var(--ratio));
       /* Rijen van een halve tegel: een gewone tegel beslaat er twee, een halve tegel één. */
       --half: calc((var(--tile) - var(--gap)) / 2);
@@ -335,9 +330,8 @@
       grid-template-rows: repeat(var(--half-rows, 8), var(--half));
       grid-auto-rows: var(--half);
       grid-auto-flow: row dense;
-      justify-content: center;
       gap: var(--gap);
-      max-width: 100%;
+      width: max-content;
     }
     /* Positie en grootte komen uit de indeling (layoutTiles). */
     .grid > .tile,
@@ -353,6 +347,7 @@
         --ratio: 1;
         --tile: calc((100cqi - var(--gap)) / 2);
         grid-template-rows: none;
+        width: auto;
       }
       /* Smal venster: twee kolommen, tegels in volgorde onder elkaar (vrije posities gelden dan niet). */
       .grid > .tile { grid-column: auto / span var(--span-cols-narrow, 1); grid-row: auto / span var(--span-rows, 2); }
@@ -498,7 +493,8 @@
       scrollbar-color: var(--border) transparent;
     }
 
-    .tile-list { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+    /* minmax(0, 1fr): lange linknamen worden afgekapt (…) in plaats van de lijst breder te maken dan de tegel. */
+    .tile-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; margin: 0; padding: 0; list-style: none; }
     .tile-list a,
     .tile-list .is-invalid {
       display: flex;
@@ -957,6 +953,7 @@
     .place-option span { font-size: .72rem; }
 
     .capacity { color: var(--text-muted); font-size: .78rem; }
+    .field-hint.is-warning { color: var(--danger); }
     .capacity.is-over { color: var(--danger); font-weight: 600; }
 
     .settings-list { display: grid; gap: 6px; margin: 4px 0 0; padding: 0; list-style: none; }
@@ -1219,7 +1216,8 @@
     const TILE_STYLES = ['rounded', 'square', 'glass'];
     // Maximale tegelhoogte; "auto" groeit mee met grote schermen.
     const TILE_SIZES = {
-      auto: ['Automatisch', 'clamp(210px, 14vw, 320px)'],
+      // Volgt de grootte van het scherm (een 4 × 4-grid past dan ongeveer), nooit het aantal kolommen of rijen.
+      auto: ['Automatisch', 'clamp(150px, min(11vw, (100vh - 190px) / 4), 280px)'],
       compact: ['Compact', '170px'],
       normal: ['Normaal', '210px'],
       large: ['Groot', '260px'],
@@ -1868,17 +1866,6 @@
       renderWeather();
       renderGrid();
       renderQuickLinks();
-      measureChrome();
-    }
-
-    // De ruimte die kop- en voetbalk en de marges innemen, zodat het grid precies in het venster past
-    // (zonder voetbalk bij uitgeschakelde snelle links, of met een hogere kopbalk in een smal venster).
-    function measureChrome() {
-      const main = getComputedStyle($('#mainContainer'));
-      const footer = $('#siteFooter');
-      const height = $('.site-header').offsetHeight + (footer.hidden ? 0 : footer.offsetHeight) +
-        parseFloat(main.paddingTop) + parseFloat(main.paddingBottom);
-      document.documentElement.style.setProperty('--chrome-h', `${Math.ceil(height) + 2}px`);
     }
 
     // Tijdens het bewerken krijgt dit de appearance uit de instellingen mee, als live voorbeeld.
@@ -1893,7 +1880,7 @@
       root.style.setProperty('--page-bg-image', imageUrl ? `url("${imageUrl}")` : '');
       root.dataset.background = background;
       root.dataset.tileStyle = appearance.tileStyle;
-      root.style.setProperty('--cfg-tile-max', TILE_SIZES[appearance.tileSize][1]);
+      root.style.setProperty('--cfg-tile-size', TILE_SIZES[appearance.tileSize][1]);
       root.style.setProperty('--cfg-ratio', TILE_RATIOS[appearance.tileRatio][1]);
       applyTheme(appearance.theme);
     }
@@ -1958,11 +1945,10 @@
       const { gridColumns, gridRows } = config.appearance;
       const layout = layoutTiles(config.tiles, gridColumns, gridRows * 2);
 
-      // De tegelmaat volgt alleen uit het ingestelde grid (en het venster), nooit uit de tegels die er staan:
-      // een tegel groter maken of verslepen maakt de andere tegels dus niet kleiner.
+      // De tegelmaat volgt alleen uit Tegelgrootte en Tegelvorm, nooit uit het aantal kolommen en rijen of de tegels
+      // die er staan: meer kolommen of rijen maken het grid groter; een tegel verslepen of vergroten verandert de rest niet.
       const grid = $('#tileGrid');
       grid.style.setProperty('--cfg-cols', gridColumns);
-      grid.style.setProperty('--cfg-rows', gridRows);
       grid.style.setProperty('--half-rows', gridRows * 2);
 
       // In de volgorde waarin ze op het scherm staan, zodat Tab en een smal venster dezelfde volgorde volgen.
@@ -2570,8 +2556,6 @@
       $('#themeToggle').addEventListener('click', toggleTheme);
       $('#settingsBtn').addEventListener('click', () => openSettings());
       $('#tileGrid').addEventListener('click', handleTileClick);
-      new ResizeObserver(measureChrome).observe($('.site-header'));
-      new ResizeObserver(measureChrome).observe($('#siteFooter'));
       bindTileDragging($('#tileGrid'));
 
       $('#sessionFileInput').addEventListener('change', event => {
@@ -3920,12 +3904,10 @@
           el('div', { class: 'inline' },
             field('Kolommen', selectFor('appearance.gridColumns', options(GRID_MAX_COLUMNS), { 'data-type': 'number', 'data-rerender': true })),
             field('Rijen', selectFor('appearance.gridRows', options(GRID_MAX_ROWS), { 'data-type': 'number', 'data-rerender': true }))),
-          el('p', { class: 'field-hint' },
-            'Het hele grid past altijd in het venster: de tegelmaat volgt uit het aantal kolommen en rijen, niet uit ' +
-            'de tegels die er staan. Wil je grotere tegels, kies dan minder rijen of kolommen.'),
           el('div', { class: 'inline' },
-            field('Tegelgrootte', selectFor('appearance.tileSize', Object.entries(TILE_SIZES).map(([value, [label]]) => [value, label]))),
-            field('Tegelvorm', selectFor('appearance.tileRatio', Object.entries(TILE_RATIOS).map(([value, [label]]) => [value, label])))),
+            field('Tegelgrootte', selectFor('appearance.tileSize', Object.entries(TILE_SIZES).map(([value, [label]]) => [value, label]), { 'data-rerender': true })),
+            field('Tegelvorm', selectFor('appearance.tileRatio', Object.entries(TILE_RATIOS).map(([value, [label]]) => [value, label]), { 'data-rerender': true }))),
+          buildCanvasHint(appearance),
           el('p', { class: 'field-hint' },
             'Automatisch: groter op grote schermen. Een bredere vorm gebruikt de breedte van het scherm beter, ' +
             'vooral voor agenda en nieuws. De tekst in de tegels groeit mee.'),
@@ -3935,6 +3917,30 @@
           'bij Google; zonder Worker komen ze van Google, DuckDuckGo of de site. Die diensten zien welke websites in je links staan.',
           checkbox('appearance.favicons', 'Favicons tonen'))
       ];
+    }
+
+    // Hoe groot wordt het grid bij deze instellingen, en past dat in het venster? De tegels blijven even groot;
+    // meer kolommen of rijen maken het grid groter.
+    function buildCanvasHint(appearance) {
+      const probe = el('div', { style: { position: 'absolute', visibility: 'hidden', width: TILE_SIZES[appearance.tileSize][1] } });
+      document.body.append(probe);
+      const tile = probe.getBoundingClientRect().width;
+      probe.remove();
+      const gap = 16;
+      const width = Math.round(appearance.gridColumns * (tile * TILE_RATIOS[appearance.tileRatio][1] + gap) - gap);
+      const height = Math.round(appearance.gridRows * (tile + gap) - gap);
+      const main = $('#mainContainer');
+      const footer = $('#siteFooter');
+      const space = {
+        width: main.clientWidth - 2 * parseFloat(getComputedStyle(main).paddingLeft),
+        height: innerHeight - $('.site-header').offsetHeight - (footer.hidden ? 0 : footer.offsetHeight) - 44
+      };
+      const scroll = [width > space.width ? 'opzij' : null, height > space.height ? 'omlaag' : null].filter(Boolean);
+      return el('p', { class: `field-hint${scroll.length ? ' is-warning' : ''}`, 'data-canvas-hint': true },
+        `Tegels van ${Math.round(tile)} px; het grid wordt ${width} × ${height} px. Meer kolommen of rijen maken het grid groter, ` +
+        'niet de tegels kleiner. ' +
+        (scroll.length ? `Dat is groter dan je venster: je scrolt dan ${scroll.join(' en ')}. Kies een kleinere tegelgrootte als je dat niet wilt.`
+          : 'Dat past in je venster.'));
     }
 
     function renderTileSettings() {

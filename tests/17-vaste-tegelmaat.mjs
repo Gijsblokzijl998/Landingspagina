@@ -1,4 +1,4 @@
-// Vaste tegelmaat: alleen het ingestelde grid (kolommen × rijen, tegelgrootte, tegelvorm) en het venster bepalen
+// Vaste tegelmaat: alleen Tegelgrootte en Tegelvorm bepalen
 // hoe groot een tegel is. Een tegel groter maken of verslepen maakt andere tegels niet kleiner. Grid tot 12 kolommen.
 import { chromium } from 'playwright';
 import { INDEX_URL, OUT } from './helpers.mjs';
@@ -41,7 +41,7 @@ for (const [w, h] of [[1920, 1080], [1024, 768]]) {
   await p.evaluate(() => { const d = structuredClone(config); d.appearance.gridColumns = 12; d.tiles.find(t => t.id === 't3').position = { col: 12, row: 1 }; applyConfig(normalizeConfig(d)); });
   await p.waitForTimeout(100);
   const wide = await p.evaluate(() => ({ cols: getComputedStyle(document.querySelector('#tileGrid')).gridTemplateColumns.split(' ').length, width: Math.round(document.querySelector('#tileGrid').getBoundingClientRect().width), hscroll: document.documentElement.scrollWidth > innerWidth, t3: document.querySelector('[data-tile-id="t3"]').style.getPropertyValue('--col') }));
-  check(`${w} px: 12 kolommen, tegel in kolom 12, geen horizontale scrollbalk`, wide.cols === 12 && !wide.hscroll && wide.t3 === '12', JSON.stringify(wide));
+  check(`${w} px: 12 kolommen, tegel in kolom 12, pagina zelf scrolt niet opzij`, wide.cols === 12 && !wide.hscroll && wide.t3 === '12', JSON.stringify(wide));
   if (w === 1920) {
     check('op 1920 px gebruikt het grid nu bijna de hele breedte', wide.width > 1800, String(wide.width));
     await p.screenshot({ path: OUT + '/grid-12-kolommen.png' });
@@ -53,19 +53,24 @@ await p.setViewportSize({ width: 1366, height: 768 });
 await p.evaluate(() => { const d = structuredClone(config); d.appearance.gridColumns = 4; delete d.tiles.find(t => t.id === 't3').position; applyConfig(normalizeConfig(d)); });
 await p.waitForTimeout(100);
 
-// --- Kop- en voetbalk gemeten, niet geschat ---
-const chrome = await p.evaluate(() => {
-  const m = getComputedStyle(document.querySelector('#mainContainer'));
-  const actual = document.querySelector('.site-header').offsetHeight + document.querySelector('#siteFooter').offsetHeight + parseFloat(m.paddingTop) + parseFloat(m.paddingBottom);
-  return { actual, reserved: parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--chrome-h')) };
-});
-check('ruimte voor kop- en voetbalk is gemeten', Math.abs(chrome.reserved - chrome.actual - 2) <= 1, JSON.stringify(chrome));
-const withFooter = await size('t2');
-await p.evaluate(() => { const d = structuredClone(config); d.quickLinks.enabled = false; applyConfig(normalizeConfig(d)); });
-await p.waitForTimeout(150);
-const withoutFooter = await size('t2');
-check('zonder voetbalk worden de tegels groter (ruimte niet verspild)', parseInt(withoutFooter) > parseInt(withFooter), `${withFooter} → ${withoutFooter}`);
-await p.evaluate(() => { const d = structuredClone(config); d.quickLinks.enabled = true; applyConfig(normalizeConfig(d)); });
+// --- Meer kolommen of rijen: het grid wordt groter, de tegels blijven even groot ---
+await p.setViewportSize({ width: 1920, height: 1080 });
+const canvas = [];
+for (const [c, r] of [[4, 4], [6, 4], [8, 6], [12, 8]]) {
+  await p.evaluate(([c, r]) => { const d = structuredClone(config); d.appearance.gridColumns = c; d.appearance.gridRows = r; applyConfig(normalizeConfig(d)); }, [c, r]);
+  await p.waitForTimeout(80);
+  canvas.push(await p.evaluate(() => { const g = document.querySelector('#tileGrid').getBoundingClientRect(); const m = document.querySelector('#mainContainer').getBoundingClientRect(); return { tile: Math.round(document.querySelector('[data-tile-id="t2"]').getBoundingClientRect().width), w: Math.round(g.width), h: Math.round(g.height), visibleLeft: g.left >= m.left }; }));
+}
+console.log('     grid bij 4×4, 6×4, 8×6, 12×8:', canvas.map(c => `${c.w}×${c.h} (tegel ${c.tile})`).join(' | '));
+check('meer kolommen of rijen: tegels blijven even groot', canvas.every(c => c.tile === canvas[0].tile), canvas.map(c => c.tile).join());
+check('… en het grid wordt groter', canvas.every((c, i) => i === 0 || (c.w > canvas[i - 1].w && c.h >= canvas[i - 1].h)));
+check('breder dan het venster: grid scrolt opzij, de linkerkant blijft bereikbaar', canvas.at(-1).visibleLeft && await p.evaluate(() => { const m = document.querySelector('#mainContainer'); return m.scrollWidth > m.clientWidth && document.documentElement.scrollWidth <= innerWidth; }));
+await p.click('#settingsBtn'); await p.click('[data-section="appearance"]');
+const hint = await p.textContent('[data-canvas-hint]');
+check('instellingen: grootte van het grid en waarschuwing bij scrollen', hint.includes('2710 × 1802') && hint.includes('opzij en omlaag'), hint);
+await p.click('[data-action="cancel-settings"]');
+await p.evaluate(() => { const d = structuredClone(config); d.appearance.gridColumns = 4; d.appearance.gridRows = 4; applyConfig(normalizeConfig(d)); });
+await p.setViewportSize({ width: 1366, height: 768 });
 
 // --- Agenda-editor: alleen maten die in het grid passen; te grote agenda wordt binnen het grid getoond ---
 await p.click('#settingsBtn'); await p.click('[data-section="appearance"]');

@@ -28,9 +28,9 @@ Alles stel je in via **⚙ Instellingen**. Wijzigingen worden pas bewaard als je
     vandaag en de komende dagen (standaard 30), inclusief herhalende afspraken. Tijden staan in de accentkleur.
     Afgelopen afspraken worden grijs. De lopende afspraak is gemarkeerd met "nog … min", de eerstvolgende met
     "over … min".
-- **Vaste tegelmaat.** Het hele grid (kolommen × rijen) past altijd in het venster; daaruit volgt hoe groot een
-  tegel is. Een tegel groter maken of verslepen maakt de andere tegels dus niet kleiner. Wil je grotere tegels, kies
-  dan minder rijen of kolommen.
+- **Vaste tegelmaat.** Hoe groot een tegel is, kies je met *Tegelgrootte* (Automatisch volgt je scherm). Meer
+  kolommen of rijen maken het grid groter, niet de tegels kleiner; een tegel vergroten of verslepen verandert de
+  andere tegels ook niet. Past het grid niet in het venster, dan scrol je; Instellingen laat zien hoe groot het wordt.
 - **Snelle links** in een vaste balk onderaan, met het favicon van de site. Dat is grijs tot je de link aanwijst.
 - **Kopbalk** met logo, titel en welkomsttekst, het weer van je plaats (Open-Meteo) en de klok.
 - **Uiterlijk.** Licht, donker of systeemthema, accentkleur en achtergrond: een zacht verloop (zes keuzes), een

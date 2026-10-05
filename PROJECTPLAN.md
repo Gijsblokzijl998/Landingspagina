@@ -90,9 +90,9 @@ Landingspagina/
 ### 3.2 Hoofdcontainer (`#mainContainer`) met het tegelgrid (`.grid`)
 - Een CSS-grid met **2–12 kolommen × 2–8 rijen**. De agenda is minstens 2 breed, dus minimaal 2 kolommen. De cellen
   zijn vierkant (of breder, met Tegelvorm) en schalen mee met het venster.
-- De tegelmaat volgt alleen uit het ingestelde grid, Tegelgrootte, Tegelvorm en het venster: het héle grid
-  (ook lege rijen) past in het venster. De tegels die er staan hebben er geen invloed op, dus een tegel groter
-  maken of verslepen maakt andere tegels niet kleiner. De ruimte voor kop- en voetbalk wordt gemeten.
+- De tegelmaat volgt alleen uit Tegelgrootte en Tegelvorm (Automatisch volgt de schermgrootte). Kolommen en rijen
+  bepalen hoe groot het grid (canvas) is, niet hoe groot een tegel is; alle rijen bestaan, ook lege. Past het grid
+  niet in het venster, dan scrolt het (opzij binnen het hoofdvlak, omlaag met de pagina).
 - Het grid rekent in halve rijen: een gewone tegel beslaat er twee, een halve tegel één.
 - Een tegel die op het dashboard is versleept, heeft een vaste plek (`position: { col, row }`) en mag los van de
   andere staan. Tegels zonder plek vullen het eerste vrije vak, in de volgorde van de configuratie (`layoutTiles`).
@@ -516,5 +516,6 @@ Worker en kan eventueel naar voren.
       echte indeling in halve rijen, oplopende wachttijd (2 → 5 → 15 min) per kapotte bron, agenda per minuut
       alleen bijwerken wat verandert, favicons na één keer bewaard; dode code en verouderd commentaar opgeruimd;
     - kopieerknop op pad-tegels verwijderd; grid tot 12 kolommen; vaste tegelmaat (niet meer afhankelijk van de
-      gebruikte rijen); agendamaten binnen het grid; geen horizontale scrollbalk bij veel kolommen.
+      gebruikte rijen); agendamaten binnen het grid; daarna: tegelmaat helemaal los van kolommen en rijen, het grid
+      groeit mee (met melding in Instellingen als het niet in het venster past).
 11. Verdere wensen of problemen: per onderwerp bijstellen. samen kijken en waar nodig het plan bijstellen. Dit document wordt bijgewerkt als keuzes veranderen.

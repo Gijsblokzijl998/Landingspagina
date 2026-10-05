@@ -79,7 +79,7 @@ const rss = await p.evaluate(() => {
 });
 check('RSS-tegel is 2 tegels breed', Math.abs(rss.width - rss.expected) < 1, `${rss.width} vs ${rss.expected}`);
 check(`elke berichttitel op één regel (${rss.items} berichten)`, rss.items > 0 && rss.oneLine && rss.ellipsis === 'ellipsis');
-check('geen horizontale scrollbalk in tegels', await p.evaluate(() => [...document.querySelectorAll('.tile-body')].every(b => b.scrollWidth <= b.clientWidth)));
+check('geen horizontale scrollbalk in tegels', await p.evaluate(() => [...document.querySelectorAll('.tile-body')].every(b => b.scrollWidth <= b.clientWidth)), await p.evaluate(() => [...document.querySelectorAll('.tile-body')].filter(b => b.scrollWidth > b.clientWidth).map(b => b.closest('[data-tile-id]').dataset.tileId + ':' + b.scrollWidth + '/' + b.clientWidth + ' ' + [...b.querySelectorAll('*')].filter(e => e.getBoundingClientRect().right > b.getBoundingClientRect().right + 1).map(e => e.className).slice(0, 3)).join()));
 
 // Links compact onder elkaar
 const linkHeights = await p.evaluate(() => [...document.querySelectorAll('[data-tile-id="dyn"] .tile-list a')].map(a => Math.round(a.getBoundingClientRect().height)));

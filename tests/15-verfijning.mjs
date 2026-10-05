@@ -121,7 +121,7 @@ await p.setViewportSize({ width: 2560, height: 1440 }); await p.waitForTimeout(2
 const big = await cell();
 await p.evaluate(() => { const d = structuredClone(config); d.appearance.tileSize = 'normal'; applyConfig(normalizeConfig(d)); });
 const normal = await cell();
-check('automatisch: grotere tegels op een groot scherm', big.w > 280 && normal.w === 210, `${big.w} vs ${normal.w}`);
+check('automatisch: grotere tegels op een groot scherm', big.w >= 270 && normal.w === 210, `${big.w} vs ${normal.w}`);
 check('tekst groeit mee met grote tegels', big.fs > normal.fs, `${big.fs} vs ${normal.fs}`);
 await p.setViewportSize({ width: 1920, height: 1080 });
 await p.evaluate(() => { const d = structuredClone(config); d.appearance.tileSize = 'auto'; d.appearance.tileRatio = 'wider'; applyConfig(normalizeConfig(d)); });
