@@ -126,7 +126,7 @@ check('agenda is 3 tegels breed', widths > 3 && widths < 3.3, String(widths));
 
 // Groter grid: 8 kolommen × 6 rijen kiezen en opslaan
 await p.click('#settingsBtn'); await p.click('[data-section="appearance"]');
-check('kolommen en rijen tot 8', await p.evaluate(() => [...document.querySelectorAll('[data-path="appearance.gridColumns"] option')].map(o => o.value).join() === '2,3,4,5,6,7,8'));
+check('kolommen tot 12, rijen tot 8', await p.evaluate(() => [...document.querySelectorAll('[data-path="appearance.gridColumns"] option')].map(o => o.value).join() === '2,3,4,5,6,7,8,9,10,11,12' && [...document.querySelectorAll('[data-path="appearance.gridRows"] option')].map(o => o.value).join() === '2,3,4,5,6,7,8'));
 await p.selectOption('[data-path="appearance.gridColumns"]', '8');
 await p.selectOption('[data-path="appearance.gridRows"]', '6');
 await p.click('[data-action="save-settings"]'); await p.waitForTimeout(300);

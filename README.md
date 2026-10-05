@@ -24,14 +24,17 @@ Alles stel je in via **⚙ Instellingen**. Wijzigingen worden pas bewaard als je
     als icoon.
     Eén regel per bericht, met vooraan een korte datum in de accentkleur (tijd van vandaag, dag deze week, anders de
     datum). Elke 15 minuten ververst.
-  - **Agenda-tegel (standaard 3 × 2, instelbaar van 2 × 2 tot 4 × 4).** De afspraken uit je Google Agenda van
+  - **Agenda-tegel (standaard 3 × 2, instelbaar tot de breedte en hoogte van het grid).** De afspraken uit je Google Agenda van
     vandaag en de komende dagen (standaard 30), inclusief herhalende afspraken. Tijden staan in de accentkleur.
     Afgelopen afspraken worden grijs. De lopende afspraak is gemarkeerd met "nog … min", de eerstvolgende met
     "over … min".
+- **Vaste tegelmaat.** Het hele grid (kolommen × rijen) past altijd in het venster; daaruit volgt hoe groot een
+  tegel is. Een tegel groter maken of verslepen maakt de andere tegels dus niet kleiner. Wil je grotere tegels, kies
+  dan minder rijen of kolommen.
 - **Snelle links** in een vaste balk onderaan, met het favicon van de site. Dat is grijs tot je de link aanwijst.
 - **Kopbalk** met logo, titel en welkomsttekst, het weer van je plaats (Open-Meteo) en de klok.
 - **Uiterlijk.** Licht, donker of systeemthema, accentkleur en achtergrond: een zacht verloop (zes keuzes), een
-  effen kleur of een foto. Verder de grootte van het grid (tot 8 × 8), de tegelgrootte (*Automatisch* groeit mee
+  effen kleur of een foto. Verder de grootte van het grid (tot 12 kolommen × 8 rijen), de tegelgrootte (*Automatisch* groeit mee
   op grote schermen, met de tekst), de tegelvorm (vierkant of breder) en de tegelstijl: afgerond, vierkant of
   *Glas* (doorschijnend). Je ziet direct een voorbeeld.
 - **Gegevens.** Exporteren, importeren en terugzetten. Er is altijd een automatische back-up in de browser.
@@ -70,7 +73,7 @@ je agenda-adres en je Worker-sleutel, dus bewaar het veilig.
 
 | Wat je ziet | Wat te doen |
 |-------------|-------------|
-| Office-tegel opent het bestand niet in Word/Excel | Zet bij die tegel *Openen in Word, Excel of PowerPoint* uit. Edge biedt het bestand dan als download aan. Het pad kopiëren kan altijd met het knopje op de tegel. |
+| Office-tegel opent het bestand niet in Word/Excel | Zet bij die tegel *Openen in Word, Excel of PowerPoint* uit. Edge biedt het bestand dan als download aan. |
 | "Koppel eerst de Worker" | Vul bij ⚙ → Koppelingen het Worker-adres en de sleutel in. |
 | "De sleutel klopt niet" | De sleutel in het dashboard en het secret `DASHBOARD_KEY` in Cloudflare verschillen. |
 | "Het secret DASHBOARD_KEY is nog niet ingesteld" | Het secret ontbreekt of heeft type *Text* in plaats van *Secret*; zie [worker/README.md](worker/README.md). |

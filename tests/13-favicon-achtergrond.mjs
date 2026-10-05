@@ -132,7 +132,7 @@ await p.click('[data-action="save-settings"]'); await p.waitForTimeout(300);
 const resized = await span();
 check('agenda na opslaan 2 breed en 3 hoog', resized.cols === 2 && resized.rows === 3, JSON.stringify(resized));
 check('grootte bewaard', await p.evaluate(() => { const c = JSON.parse(localStorage.getItem('lp:config')).tiles.find(t => t.type === 'calendar'); return c.width === 2 && c.height === 3; }));
-check('ongeldige grootte wordt begrensd (2–4)', await p.evaluate(() => { const t = normalizeConfig({ ...DEFAULT_CONFIG, tiles: [{ id: 'c', type: 'calendar', title: 'A', width: 9, height: 0 }] }).tiles[0]; return t.width === 4 && t.height === 2; }));
+check('ongeldige grootte wordt begrensd (breedte 2–12, hoogte 2–8)', await p.evaluate(() => { const t = normalizeConfig({ ...DEFAULT_CONFIG, tiles: [{ id: 'c', type: 'calendar', title: 'A', width: 19, height: 0 }] }).tiles[0]; return t.width === 12 && t.height === 2; }));
 check('cellen tellen met de ingestelde grootte', await p.evaluate(() => tileCells({ type: 'calendar', width: 4, height: 3 }, 8) === 12 && tileCells({ type: 'calendar', width: 4, height: 3 }, 2) === 6));
 check('bij 2 breed passen tijden nog op één regel', (await wrappedTimes()).length === 0, (await wrappedTimes()).join(', '));
 await p.screenshot({ path: OUT + '/agenda-2x3.png' });

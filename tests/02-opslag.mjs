@@ -88,12 +88,12 @@ await p.click('[data-action="cancel-settings"]');
 const norm = await p.evaluate(() => normalizeConfig({
   version: 1,
   general: { title: 42 },
-  appearance: { gridColumns: 9, gridRows: 1, theme: 'paars', accentColor: 'red', tileStyle: 'rond' },
+  appearance: { gridColumns: 15, gridRows: 1, theme: 'paars', accentColor: 'red', tileStyle: 'rond' },
   tiles: [{ type: 'onbekend' }, 'tekst', { id: 'a', type: 'link', title: 'X' }, { id: 'a', type: 'links', links: [{ label: 'L' }, 5] }],
   quickLinks: { items: [{ label: 'Q', url: 'https://q.nl' }, null] }
 }));
 check('normalize: foute typen -> standaard', norm.general.title === 'Mijn Dashboard' && norm.appearance.theme === 'system' && norm.appearance.accentColor === '#2563eb' && norm.appearance.tileStyle === 'rounded');
-check('normalize: grid begrensd 2–8', norm.appearance.gridColumns === 8 && norm.appearance.gridRows === 2);
+check('normalize: grid begrensd (kolommen 2–12, rijen 2–8)', norm.appearance.gridColumns === 12 && norm.appearance.gridRows === 2);
 check('normalize: ongeldige tegels eruit, velden aangevuld', norm.tiles.length === 2 && norm.tiles[0].target.kind === 'url' && norm.tiles[0].openInApp === true && !('newTab' in norm.tiles[0]));
 check('normalize: dubbele id vervangen', norm.tiles[0].id === 'a' && norm.tiles[1].id !== 'a');
 check('normalize: links-items opgeschoond', norm.tiles[1].links.length === 1 && norm.tiles[1].links[0].url === '');

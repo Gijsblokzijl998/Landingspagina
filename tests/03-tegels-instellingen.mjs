@@ -87,14 +87,7 @@ check('Office-optie zichtbaar bij .xlsx', await p.isVisible('[data-office-option
 await p.click('[data-action="close-tile-editor"]');
 await save();
 check('Office-tegel: Excel-link', (await p.getAttribute('[data-tile-id] a.tile-main >> nth=-1', 'href')) === 'ms-excel:ofe|u|file:///C:/Users/Test/Begroting%202026.xlsx');
-check('pad-tegel heeft kopieerknop', await p.locator('[data-action="copy-path"]').count() === 1);
-
-// Pad kopiëren
-await p.hover('.tile--link >> nth=-1');
-await p.click('[data-action="copy-path"]');
-await p.waitForTimeout(150);
-check('pad gekopieerd naar klembord', (await p.evaluate(() => navigator.clipboard.readText())) === 'C:\\Users\\Test\\Begroting 2026.xlsx');
-check('melding na kopiëren', (await toast()).startsWith('Pad gekopieerd'));
+check('pad-tegel zonder kopieerknop bij aanwijzen', await p.locator('.tile--link .tile-action').count() === 0);
 
 // Tegel met echt lokaal pad: klik opent het bestand (file -> file)
 await open('tiles');

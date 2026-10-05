@@ -88,8 +88,11 @@ Landingspagina/
   - instellingenknop (⚙), die de modal opent.
 
 ### 3.2 Hoofdcontainer (`#mainContainer`) met het tegelgrid (`.grid`)
-- Een CSS-grid met **2–8 kolommen × 2–8 rijen**. De agenda is minstens 2 breed, dus minimaal 2 kolommen. De cellen
-  zijn vierkant en schalen mee met het venster.
+- Een CSS-grid met **2–12 kolommen × 2–8 rijen**. De agenda is minstens 2 breed, dus minimaal 2 kolommen. De cellen
+  zijn vierkant (of breder, met Tegelvorm) en schalen mee met het venster.
+- De tegelmaat volgt alleen uit het ingestelde grid, Tegelgrootte, Tegelvorm en het venster: het héle grid
+  (ook lege rijen) past in het venster. De tegels die er staan hebben er geen invloed op, dus een tegel groter
+  maken of verslepen maakt andere tegels niet kleiner. De ruimte voor kop- en voetbalk wordt gemeten.
 - Het grid rekent in halve rijen: een gewone tegel beslaat er twee, een halve tegel één.
 - Een tegel die op het dashboard is versleept, heeft een vaste plek (`position: { col, row }`) en mag los van de
   andere staan. Tegels zonder plek vullen het eerste vrije vak, in de volgorde van de configuratie (`layoutTiles`).
@@ -496,7 +499,7 @@ Worker en kan eventueel naar voren.
    - toegankelijkheid: axe-core zonder bevindingen in licht en donker; agenda-contrast en toetsenbordtoegang verbeterd;
    - beveiliging: CSP met SHA-256 van de twee scripts, `connect-src` alleen Open-Meteo en `*.workers.dev`;
      Worker-adressen buiten workers.dev worden met uitleg geweigerd;
-   - tests in de repo (`npm test`, nu 18 suites en ruim 390 controles) en README afgerond.
+   - tests in de repo (`npm test`, nu 19 suites en ruim 400 controles) en README afgerond.
 10. Wensen na gebruik op Windows/Edge, per ronde verwerkt:
     - brede RSS-tegel (2 × 1) met één regel per bericht, compacte links en agenda, snelle links zonder pil,
       favicons via de Worker (`/favicon`, versie 1.1.0), ook voor Dynamics 365;
@@ -511,5 +514,7 @@ Worker en kan eventueel naar voren.
       "nog/over … min" in de agenda, inlaadanimatie, instellingen met iconen en kaartjes, plus kleine fouten;
     - robuustheid: back-up in IndexedDB wint bij het openen als localStorage achterloopt, capaciteit volgens de
       echte indeling in halve rijen, oplopende wachttijd (2 → 5 → 15 min) per kapotte bron, agenda per minuut
-      alleen bijwerken wat verandert, favicons na één keer bewaard; dode code en verouderd commentaar opgeruimd.
+      alleen bijwerken wat verandert, favicons na één keer bewaard; dode code en verouderd commentaar opgeruimd;
+    - kopieerknop op pad-tegels verwijderd; grid tot 12 kolommen; vaste tegelmaat (niet meer afhankelijk van de
+      gebruikte rijen); agendamaten binnen het grid; geen horizontale scrollbalk bij veel kolommen.
 11. Verdere wensen of problemen: per onderwerp bijstellen. samen kijken en waar nodig het plan bijstellen. Dit document wordt bijgewerkt als keuzes veranderen.
