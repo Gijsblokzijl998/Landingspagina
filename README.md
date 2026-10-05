@@ -30,7 +30,8 @@ Alles stel je in via **⚙ Instellingen**. Wijzigingen worden pas bewaard als je
     "over … min".
 - **Vaste tegelmaat.** Hoe groot een tegel is, kies je met *Tegelgrootte* (Automatisch volgt je scherm). Meer
   kolommen of rijen maken het grid groter, niet de tegels kleiner; een tegel vergroten of verslepen verandert de
-  andere tegels ook niet. Past het grid niet in het venster, dan scrol je; Instellingen laat zien hoe groot het wordt.
+  andere tegels ook niet. Lege rijen en kolommen buiten het venster zie je alleen tijdens het slepen; scrollen kan
+  alleen naar plekken waar tegels staan.
 - **Snelle links** in een vaste balk onderaan, met het favicon van de site. Dat is grijs tot je de link aanwijst.
 - **Kopbalk** met logo, titel en welkomsttekst, het weer van je plaats (Open-Meteo) en de klok.
 - **Uiterlijk.** Licht, donker of systeemthema, accentkleur en achtergrond: een zacht verloop (zes keuzes), een

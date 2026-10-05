@@ -91,8 +91,9 @@ Landingspagina/
 - Een CSS-grid met **2–12 kolommen × 2–8 rijen**. De agenda is minstens 2 breed, dus minimaal 2 kolommen. De cellen
   zijn vierkant (of breder, met Tegelvorm) en schalen mee met het venster.
 - De tegelmaat volgt alleen uit Tegelgrootte en Tegelvorm (Automatisch volgt de schermgrootte). Kolommen en rijen
-  bepalen hoe groot het grid (canvas) is, niet hoe groot een tegel is; alle rijen bestaan, ook lege. Past het grid
-  niet in het venster, dan scrolt het (opzij binnen het hoofdvlak, omlaag met de pagina).
+  bepalen hoe groot het grid (canvas) is, niet hoe groot een tegel is. Zichtbaar is wat in het venster past plus
+  waar tegels staan (fitGridExtent); lege ruimte buiten beeld maakt geen scrollruimte. Tijdens het slepen is het
+  hele grid er, zodat je ook naar een lege plek verder weg kunt slepen.
 - Het grid rekent in halve rijen: een gewone tegel beslaat er twee, een halve tegel één.
 - Een tegel die op het dashboard is versleept, heeft een vaste plek (`position: { col, row }`) en mag los van de
   andere staan. Tegels zonder plek vullen het eerste vrije vak, in de volgorde van de configuratie (`layoutTiles`).

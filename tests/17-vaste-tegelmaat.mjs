@@ -30,7 +30,8 @@ check('agenda groter of kleiner: andere tegels blijven even groot', seen.every(s
 
 // --- Verslepen naar een lege rij onderaan ---
 const grid = await p.evaluate(() => { const g = document.querySelector('#tileGrid'); const s = getComputedStyle(g); return { rows: s.gridTemplateRows.split(' ').length, height: Math.round(g.getBoundingClientRect().height), cell: parseFloat(s.gridTemplateColumns), gap: parseFloat(s.rowGap) }; });
-check('alle ingestelde rijen bestaan, ook lege (4 rijen = 8 halve rijen)', grid.rows === 8 && Math.abs(grid.height - (4 * grid.cell + 3 * grid.gap)) <= 1, JSON.stringify(grid));
+check('lege rijen buiten beeld maken geen scrollruimte', grid.rows <= 8 && await p.evaluate(() => document.documentElement.scrollHeight <= innerHeight), JSON.stringify(grid));
+check('tijdens het slepen is het hele grid er (4 rijen = 8 halve rijen)', await p.evaluate(() => { const g = document.querySelector('#tileGrid'); showFullGrid(g); const n = getComputedStyle(g).gridTemplateRows.split(' ').length; fitGridExtent(); return n === 8; }));
 await p.evaluate(() => { const d = structuredClone(config); d.tiles.find(t => t.id === 't3').position = { col: 1, row: 7 }; applyConfig(normalizeConfig(d)); });
 await p.waitForTimeout(80);
 check('tegel in de onderste, lege rij: andere tegels blijven even groot', await size('t2') === start, await size('t2'));
@@ -63,11 +64,14 @@ for (const [c, r] of [[4, 4], [6, 4], [8, 6], [12, 8]]) {
 }
 console.log('     grid bij 4×4, 6×4, 8×6, 12×8:', canvas.map(c => `${c.w}×${c.h} (tegel ${c.tile})`).join(' | '));
 check('meer kolommen of rijen: tegels blijven even groot', canvas.every(c => c.tile === canvas[0].tile), canvas.map(c => c.tile).join());
-check('… en het grid wordt groter', canvas.every((c, i) => i === 0 || (c.w > canvas[i - 1].w && c.h >= canvas[i - 1].h)));
-check('breder dan het venster: grid scrolt opzij, de linkerkant blijft bereikbaar', canvas.at(-1).visibleLeft && await p.evaluate(() => { const m = document.querySelector('#mainContainer'); return m.scrollWidth > m.clientWidth && document.documentElement.scrollWidth <= innerWidth; }));
+check('… zonder tegels buiten beeld: geen scrollbalk, ook niet bij 12 × 8', await p.evaluate(() => { const m = document.querySelector('#mainContainer'); return m.scrollWidth <= m.clientWidth && document.documentElement.scrollHeight <= innerHeight; }));
+await p.evaluate(() => { const d = structuredClone(config); d.tiles.find(t => t.id === 't3').position = { col: 12, row: 15 }; applyConfig(normalizeConfig(d)); });
+await p.waitForTimeout(100);
+check('tegel buiten beeld (kolom 12, rij 8): je kunt ernaartoe scrollen, links blijft bereikbaar', await p.evaluate(() => { const m = document.querySelector('#mainContainer'), g = document.querySelector('#tileGrid'); return m.scrollWidth > m.clientWidth && document.documentElement.scrollHeight > innerHeight && g.getBoundingClientRect().left >= m.getBoundingClientRect().left; }));
+await p.evaluate(() => { const d = structuredClone(config); delete d.tiles.find(t => t.id === 't3').position; applyConfig(normalizeConfig(d)); });
 await p.click('#settingsBtn'); await p.click('[data-section="appearance"]');
 const hint = await p.textContent('[data-canvas-hint]');
-check('instellingen: grootte van het grid en waarschuwing bij scrollen', hint.includes('2710 × 1802') && hint.includes('opzij en omlaag'), hint);
+check('instellingen: grootte van het grid en waarschuwing bij scrollen', hint.includes('2710 × 1802') && hint.includes('alleen tijdens het slepen'), hint);
 await p.click('[data-action="cancel-settings"]');
 await p.evaluate(() => { const d = structuredClone(config); d.appearance.gridColumns = 4; d.appearance.gridRows = 4; applyConfig(normalizeConfig(d)); });
 await p.setViewportSize({ width: 1366, height: 768 });
